@@ -16,6 +16,8 @@ const schema = z.object({
   name: z.string().min(1, "Nom requis"),
   currency: z.enum(["EUR", "USD"]),
   currentPrice: z.coerce.number().positive("Prix > 0"),
+  coingeckoId: z.string().optional(),
+  yahooSymbol: z.string().optional(),
   notes: z.string().optional(),
 });
 
@@ -27,6 +29,8 @@ const INIT: FormValues = {
   name: "",
   currency: "EUR",
   currentPrice: 0,
+  coingeckoId: "",
+  yahooSymbol: "",
   notes: "",
 };
 
@@ -64,6 +68,8 @@ export function AddHoldingForm({ onCreated }: AddHoldingFormProps) {
       currency: result.data.currency,
       currentPrice: result.data.currentPrice,
       currentPriceUpdatedAt: new Date().toISOString(),
+      coingeckoId: result.data.coingeckoId?.trim() || undefined,
+      yahooSymbol: result.data.yahooSymbol?.trim() || undefined,
       notes: result.data.notes || undefined,
     });
     toast.success("Position créée", {
@@ -133,7 +139,35 @@ export function AddHoldingForm({ onCreated }: AddHoldingFormProps) {
             className={errors.currentPrice ? "border-strawberry-600" : undefined}
           />
         </Field>
-        <Field label="Notes (optionnel)">
+        {values.type === "crypto" && (
+          <Field
+            label="CoinGecko ID (optionnel)"
+            hint="Auto-détecté pour BTC, ETH, SOL, etc. — sinon copie l'ID depuis coingecko.com/coins/<…>"
+            className="sm:col-span-3"
+          >
+            <Input
+              mono
+              placeholder="bitcoin, ethereum, dogwifcoin…"
+              value={values.coingeckoId ?? ""}
+              onChange={(e) => update("coingeckoId", e.target.value)}
+            />
+          </Field>
+        )}
+        {(values.type === "etf" || values.type === "stock") && (
+          <Field
+            label="Symbol Yahoo Finance (optionnel)"
+            hint="Ex: WPEA.PA, EUNL.DE, AAPL. Vide = utilise le ticker tel quel pour USD."
+            className="sm:col-span-3"
+          >
+            <Input
+              mono
+              placeholder="WPEA.PA, AAPL…"
+              value={values.yahooSymbol ?? ""}
+              onChange={(e) => update("yahooSymbol", e.target.value)}
+            />
+          </Field>
+        )}
+        <Field label="Notes (optionnel)" className="sm:col-span-3">
           <Input
             value={values.notes ?? ""}
             onChange={(e) => update("notes", e.target.value)}

@@ -16,6 +16,8 @@ const holdingSchema = z.object({
   currency: currencySchema,
   currentPrice: z.number(),
   currentPriceUpdatedAt: z.string(),
+  coingeckoId: z.string().optional(),
+  yahooSymbol: z.string().optional(),
   notes: z.string().optional(),
   createdAt: z.string(),
 });

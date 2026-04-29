@@ -11,6 +11,10 @@ export interface Holding {
   currency: Currency;
   currentPrice: number;
   currentPriceUpdatedAt: string;
+  /** CoinGecko coin id, e.g. "bitcoin" — for crypto auto price update */
+  coingeckoId?: string;
+  /** Yahoo Finance symbol, e.g. "WPEA.PA", "AAPL" — for stock/ETF auto price update */
+  yahooSymbol?: string;
   notes?: string;
   createdAt: string;
 }

@@ -42,7 +42,7 @@ export function QuickActionsCard() {
             + Saisir DCA
           </Button>
         </Link>
-        <Link href="/positions" className="inline-block">
+        <Link href="/positions?update=1" className="inline-block">
           <Button variant="grape" className="w-full">
             Mettre à jour prix
           </Button>
