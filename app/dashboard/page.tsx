@@ -1,20 +1,20 @@
+import { NetWorthCard } from "@/components/dashboard/NetWorthCard";
 import { Card } from "@/components/ui/Card";
 
 export default function DashboardPage() {
   return (
     <div>
-      <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-blueberry-800/80">
-        ◆ Wealth OS
-      </div>
-      <h1 className="mt-1 mb-6 font-sans text-3xl font-extralight tracking-tight text-blueberry-900">
-        Palier C — layout iMac G3
-      </h1>
+      <NetWorthCard
+        value={71240}
+        monthDelta={1240}
+        monthDeltaPct={1.8}
+        ytdDelta={8940}
+      />
 
-      <Card header="Layout fonctionnel">
+      <Card header="À venir aux prochains paliers">
         <p className="text-sm text-blueberry-900/80">
-          Fenêtre plastique translucide, title bar avec traffic lights,
-          toolbar avec onglets bonbons, sidebar Blueberry — tout en place.
-          Le hero NetWorthCard arrive au Palier D.
+          Courbe d&apos;évolution 90 jours, donut d&apos;allocation, quick
+          actions, top objectif et table des positions.
         </p>
         <p className="mt-3 text-sm">
           <a
