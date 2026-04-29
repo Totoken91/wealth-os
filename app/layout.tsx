@@ -5,6 +5,7 @@ import { WindowFrame } from "@/components/layout/WindowFrame";
 import { TitleBar } from "@/components/layout/TitleBar";
 import { Toolbar } from "@/components/layout/Toolbar";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { Toaster } from "@/components/Toaster";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -44,6 +45,7 @@ export default function RootLayout({
             </main>
           </div>
         </WindowFrame>
+        <Toaster />
       </body>
     </html>
   );
