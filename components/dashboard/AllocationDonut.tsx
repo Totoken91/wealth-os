@@ -20,6 +20,7 @@ export function AllocationDonut() {
   const vehicles = useWealthStore((s) => s.vehicles);
   const snapshots = useWealthStore((s) => s.snapshots);
   const goals = useWealthStore((s) => s.goals);
+  const dcaRules = useWealthStore((s) => s.dcaRules);
   const settings = useWealthStore((s) => s.settings);
 
   const segments = useMemo<Segment[]>(() => {
@@ -29,6 +30,7 @@ export function AllocationDonut() {
       vehicles,
       snapshots,
       goals,
+      dcaRules,
       settings,
     });
     return [
@@ -38,7 +40,7 @@ export function AllocationDonut() {
       { key: "cash", label: "Cash", value: breakdown.cash, color: "#e84858", textColor: "#5a0a18" },
       { key: "vehicles", label: "Véhicules", value: breakdown.vehicles, color: "#f06820", textColor: "#6a2a0a" },
     ].filter((s) => s.value > 0);
-  }, [holdings, transactions, vehicles, snapshots, goals, settings]);
+  }, [holdings, transactions, vehicles, snapshots, goals, dcaRules, settings]);
 
   const total = segments.reduce((s, x) => s + x.value, 0);
 

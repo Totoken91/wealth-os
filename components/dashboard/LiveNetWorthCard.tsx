@@ -41,6 +41,7 @@ export function LiveNetWorthCard() {
   const vehicles = useWealthStore((s) => s.vehicles);
   const snapshots = useWealthStore((s) => s.snapshots);
   const goals = useWealthStore((s) => s.goals);
+  const dcaRules = useWealthStore((s) => s.dcaRules);
   const settings = useWealthStore((s) => s.settings);
 
   const { totalNet, monthDelta, monthDeltaPct, ytdDelta } = useMemo(() => {
@@ -50,12 +51,13 @@ export function LiveNetWorthCard() {
       vehicles,
       snapshots,
       goals,
+      dcaRules,
       settings,
     };
     const total = calculateTotalNet(state);
     const deltas = deriveDeltas(state, total);
     return { totalNet: total, ...deltas };
-  }, [holdings, transactions, vehicles, snapshots, goals, settings]);
+  }, [holdings, transactions, vehicles, snapshots, goals, dcaRules, settings]);
 
   if (!hydrated) {
     return <NetWorthCard value={0} />;

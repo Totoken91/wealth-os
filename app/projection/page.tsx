@@ -39,6 +39,7 @@ export default function ProjectionPage() {
   const vehicles = useWealthStore((s) => s.vehicles);
   const snapshots = useWealthStore((s) => s.snapshots);
   const goals = useWealthStore((s) => s.goals);
+  const dcaRules = useWealthStore((s) => s.dcaRules);
   const settings = useWealthStore((s) => s.settings);
 
   const liveNet = useMemo(
@@ -49,9 +50,10 @@ export default function ProjectionPage() {
         vehicles,
         snapshots,
         goals,
+        dcaRules,
         settings,
       }),
-    [holdings, transactions, vehicles, snapshots, goals, settings],
+    [holdings, transactions, vehicles, snapshots, goals, dcaRules, settings],
   );
 
   const [form, setForm] = useState<FormState>({

@@ -40,6 +40,7 @@ export default function HistoryPage() {
   const transactions = useWealthStore((s) => s.transactions);
   const vehicles = useWealthStore((s) => s.vehicles);
   const goals = useWealthStore((s) => s.goals);
+  const dcaRules = useWealthStore((s) => s.dcaRules);
   const settings = useWealthStore((s) => s.settings);
   const deleteSnapshot = useWealthStore((s) => s.deleteSnapshot);
 
@@ -52,6 +53,7 @@ export default function HistoryPage() {
       vehicles,
       snapshots,
       goals,
+      dcaRules,
       settings,
     };
     const liveNet = calculateTotalNet(liveState);
@@ -89,7 +91,7 @@ export default function HistoryPage() {
       arr = arr.filter((p) => p.ts >= cutoff);
     }
     return arr;
-  }, [snapshots, holdings, transactions, vehicles, goals, settings, range]);
+  }, [snapshots, holdings, transactions, vehicles, goals, dcaRules, settings, range]);
 
   const sortedSnapshots = useMemo(
     () => [...snapshots].sort((a, b) => b.date.localeCompare(a.date)),

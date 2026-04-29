@@ -59,6 +59,7 @@ export function PortfolioLineChart() {
   const vehicles = useWealthStore((s) => s.vehicles);
   const settings = useWealthStore((s) => s.settings);
   const goals = useWealthStore((s) => s.goals);
+  const dcaRules = useWealthStore((s) => s.dcaRules);
 
   const [range, setRange] = useState<Range>("90J");
 
@@ -69,6 +70,7 @@ export function PortfolioLineChart() {
       vehicles,
       snapshots,
       goals,
+      dcaRules,
       settings,
     };
     const liveNet = calculateTotalNet(liveState);
@@ -113,7 +115,7 @@ export function PortfolioLineChart() {
       points = points.filter((p) => p.ts >= cutoff);
     }
     return downsample(points);
-  }, [snapshots, holdings, transactions, vehicles, goals, settings, range]);
+  }, [snapshots, holdings, transactions, vehicles, goals, dcaRules, settings, range]);
 
   const last = data[data.length - 1];
   const first = data[0];

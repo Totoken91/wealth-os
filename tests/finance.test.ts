@@ -13,12 +13,14 @@ import {
   calculateUnrealizedPnL,
   calculateVehicleCurrentValue,
   createSnapshot,
+  generatePendingDrafts,
   planForGoal,
   projectFutureValue,
   shouldCreateSnapshot,
 } from "@/lib/finance";
 import type {
   AppState,
+  DcaRule,
   Goal,
   Holding,
   Settings,
@@ -305,6 +307,7 @@ function emptyState(): AppState {
     vehicles: [],
     snapshots: [],
     goals: [],
+    dcaRules: [],
     settings: baseSettings,
   };
 }
@@ -679,6 +682,83 @@ describe("planForGoal", () => {
     // remaining 10000 / 10 months ≈ 1000 (approximate; date arithmetic may be slightly off)
     expect(plan.requiredMonthly).toBeGreaterThan(900);
     expect(plan.requiredMonthly).toBeLessThan(1100);
+  });
+});
+
+/* -------------------------------------------------------------------- */
+/* DCA rules drafts                                                      */
+/* -------------------------------------------------------------------- */
+
+function makeRule(over: Partial<DcaRule> = {}): DcaRule {
+  return {
+    id: "r1",
+    enabled: true,
+    holdingId: "h1",
+    amount: 50,
+    cadence: "weekly",
+    dayOfPeriod: 1, // Monday
+    startDate: "2026-04-01",
+    createdAt: "2026-01-01T00:00:00Z",
+    ...over,
+  };
+}
+
+describe("generatePendingDrafts", () => {
+  it("weekly Monday rule generates each Monday since startDate", () => {
+    // 2026-04-01 is a Wednesday → first Monday is 2026-04-06
+    const now = new Date(2026, 3, 27); // Mon 2026-04-27
+    const drafts = generatePendingDrafts([makeRule()], now);
+    const dates = drafts.map((d) => d.occurrenceDate);
+    expect(dates).toEqual([
+      "2026-04-06",
+      "2026-04-13",
+      "2026-04-20",
+      "2026-04-27",
+    ]);
+  });
+
+  it("respects lastSettledDate to skip already validated occurrences", () => {
+    const now = new Date(2026, 3, 27);
+    const drafts = generatePendingDrafts(
+      [makeRule({ lastSettledDate: "2026-04-13" })],
+      now,
+    );
+    expect(drafts.map((d) => d.occurrenceDate)).toEqual([
+      "2026-04-20",
+      "2026-04-27",
+    ]);
+  });
+
+  it("disabled rules produce no drafts", () => {
+    const now = new Date(2026, 3, 27);
+    expect(generatePendingDrafts([makeRule({ enabled: false })], now)).toEqual([]);
+  });
+
+  it("biweekly skips every other week", () => {
+    const now = new Date(2026, 3, 27);
+    const drafts = generatePendingDrafts(
+      [makeRule({ cadence: "biweekly" })],
+      now,
+    );
+    expect(drafts.map((d) => d.occurrenceDate)).toEqual([
+      "2026-04-06",
+      "2026-04-20",
+    ]);
+  });
+
+  it("monthly anchors on dayOfPeriod each month", () => {
+    const now = new Date(2026, 5, 20); // 2026-06-20
+    const rule = makeRule({
+      cadence: "monthly",
+      dayOfPeriod: 15,
+      startDate: "2026-04-01",
+    });
+    const drafts = generatePendingDrafts([rule], now);
+    expect(drafts.map((d) => d.occurrenceDate)).toEqual([
+      "2026-04-15",
+      "2026-05-15",
+      "2026-06-15",
+    ]);
   });
 });
 

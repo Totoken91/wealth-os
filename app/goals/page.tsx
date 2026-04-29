@@ -21,6 +21,7 @@ export default function GoalsPage() {
   const transactions = useWealthStore((s) => s.transactions);
   const vehicles = useWealthStore((s) => s.vehicles);
   const snapshots = useWealthStore((s) => s.snapshots);
+  const dcaRules = useWealthStore((s) => s.dcaRules);
   const settings = useWealthStore((s) => s.settings);
 
   const [showForm, setShowForm] = useState(false);
@@ -32,9 +33,10 @@ export default function GoalsPage() {
       vehicles,
       snapshots,
       goals,
+      dcaRules,
       settings,
     }),
-    [holdings, transactions, vehicles, snapshots, goals, settings],
+    [holdings, transactions, vehicles, snapshots, goals, dcaRules, settings],
   );
 
   const observed = useMemo(

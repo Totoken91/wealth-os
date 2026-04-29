@@ -1,5 +1,6 @@
 import type {
   AppState,
+  DcaRule,
   Goal,
   Holding,
   HoldingType,
@@ -559,6 +560,100 @@ export function findSnapshotNear(
     }
   }
   return best;
+}
+
+/* ------------------------------------------------------------------ */
+/* DCA rules — pending drafts                                          */
+/* ------------------------------------------------------------------ */
+
+export interface DcaDraft {
+  ruleId: string;
+  occurrenceDate: string; // YYYY-MM-DD
+  holdingId: string;
+  amount: number;
+}
+
+function parseISODate(s: string): Date {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
+}
+
+function isoDay(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Returns 1..7 with Monday = 1. */
+function isoDayOfWeek(d: Date): number {
+  const dow = d.getDay();
+  return dow === 0 ? 7 : dow;
+}
+
+function alignToDayOfWeek(start: Date, target: number): Date {
+  const out = new Date(start);
+  const diff = ((target - isoDayOfWeek(out)) + 7) % 7;
+  out.setDate(out.getDate() + diff);
+  return out;
+}
+
+function clampDayOfMonth(year: number, month0: number, day: number): Date {
+  const lastDay = new Date(year, month0 + 1, 0).getDate();
+  return new Date(year, month0, Math.min(day, lastDay));
+}
+
+function enumerateOccurrences(
+  rule: DcaRule,
+  until: Date,
+): Date[] {
+  const start = parseISODate(rule.startDate);
+  const occs: Date[] = [];
+  if (rule.cadence === "weekly" || rule.cadence === "biweekly") {
+    const step = rule.cadence === "weekly" ? 7 : 14;
+    let cur = alignToDayOfWeek(start, rule.dayOfPeriod);
+    while (cur.getTime() <= until.getTime()) {
+      occs.push(new Date(cur));
+      cur = new Date(cur);
+      cur.setDate(cur.getDate() + step);
+    }
+  } else {
+    // monthly
+    const cur = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (cur.getTime() <= until.getTime()) {
+      const occ = clampDayOfMonth(cur.getFullYear(), cur.getMonth(), rule.dayOfPeriod);
+      if (occ.getTime() >= start.getTime() && occ.getTime() <= until.getTime()) {
+        occs.push(occ);
+      }
+      cur.setMonth(cur.getMonth() + 1);
+    }
+  }
+  return occs;
+}
+
+/**
+ * Returns the list of pending DCA drafts (occurrences past `now` that have
+ * not been settled yet) sorted by date ascending.
+ */
+export function generatePendingDrafts(
+  rules: DcaRule[],
+  now: Date = new Date(),
+): DcaDraft[] {
+  const out: DcaDraft[] = [];
+  for (const rule of rules) {
+    if (!rule.enabled) continue;
+    const settled = rule.lastSettledDate
+      ? parseISODate(rule.lastSettledDate)
+      : null;
+    const occs = enumerateOccurrences(rule, now);
+    for (const occ of occs) {
+      if (settled && occ.getTime() <= settled.getTime()) continue;
+      out.push({
+        ruleId: rule.id,
+        occurrenceDate: isoDay(occ),
+        holdingId: rule.holdingId,
+        amount: rule.amount,
+      });
+    }
+  }
+  return out.sort((a, b) => a.occurrenceDate.localeCompare(b.occurrenceDate));
 }
 
 /* ------------------------------------------------------------------ */

@@ -7,6 +7,7 @@ import { DEFAULT_SETTINGS, STORAGE_KEY } from "@/lib/constants";
 import { createSnapshot, shouldCreateSnapshot } from "@/lib/finance";
 import type {
   AppState,
+  DcaRule,
   Goal,
   Holding,
   Settings,
@@ -18,6 +19,7 @@ type HoldingInput = Omit<Holding, "id" | "createdAt">;
 type TransactionInput = Omit<Transaction, "id">;
 type VehicleInput = Omit<Vehicle, "id">;
 type GoalInput = Omit<Goal, "id" | "createdAt">;
+type DcaRuleInput = Omit<DcaRule, "id" | "createdAt">;
 
 interface Actions {
   // Holdings
@@ -40,6 +42,11 @@ interface Actions {
   updateGoal: (id: string, patch: Partial<Goal>) => void;
   deleteGoal: (id: string) => void;
 
+  // DCA rules
+  addDcaRule: (input: DcaRuleInput) => string;
+  updateDcaRule: (id: string, patch: Partial<DcaRule>) => void;
+  deleteDcaRule: (id: string) => void;
+
   // Settings
   updateSettings: (patch: Partial<Settings>) => void;
 
@@ -61,6 +68,7 @@ const initialState: AppState = {
   vehicles: [],
   snapshots: [],
   goals: [],
+  dcaRules: [],
   settings: { ...DEFAULT_SETTINGS },
 };
 
@@ -177,6 +185,30 @@ export const useWealthStore = create<Store>()(
       deleteGoal: (id) =>
         set((s) => ({ ...s, goals: s.goals.filter((g) => g.id !== id) })),
 
+      /* ---------------- DCA rules ---------------- */
+      addDcaRule: (input) => {
+        const id = `dca-${nanoid(8)}`;
+        const rule: DcaRule = {
+          ...input,
+          id,
+          createdAt: new Date().toISOString(),
+        };
+        set((s) => ({ ...s, dcaRules: [...s.dcaRules, rule] }));
+        return id;
+      },
+      updateDcaRule: (id, patch) =>
+        set((s) => ({
+          ...s,
+          dcaRules: s.dcaRules.map((r) =>
+            r.id === id ? { ...r, ...patch } : r,
+          ),
+        })),
+      deleteDcaRule: (id) =>
+        set((s) => ({
+          ...s,
+          dcaRules: s.dcaRules.filter((r) => r.id !== id),
+        })),
+
       /* ---------------- Settings ---------------- */
       updateSettings: (patch) =>
         set((s) => ({ ...s, settings: { ...s.settings, ...patch } })),
@@ -201,6 +233,7 @@ export const useWealthStore = create<Store>()(
           vehicles: data.vehicles ?? [],
           snapshots: data.snapshots ?? [],
           goals: data.goals ?? [],
+          dcaRules: data.dcaRules ?? [],
           settings: { ...DEFAULT_SETTINGS, ...(data.settings ?? {}) },
         });
       },
@@ -212,6 +245,7 @@ export const useWealthStore = create<Store>()(
           vehicles: s.vehicles,
           snapshots: s.snapshots,
           goals: s.goals,
+          dcaRules: s.dcaRules,
           settings: s.settings,
         };
       },
@@ -228,6 +262,7 @@ export const useWealthStore = create<Store>()(
         vehicles: state.vehicles,
         snapshots: state.snapshots,
         goals: state.goals,
+        dcaRules: state.dcaRules,
         settings: state.settings,
       }),
       skipHydration: true,

@@ -82,12 +82,28 @@ const settingsSchema = z.object({
   lastDataUpdateReminder: z.string().optional(),
 });
 
+const dcaCadenceSchema = z.enum(["weekly", "biweekly", "monthly"]);
+
+const dcaRuleSchema = z.object({
+  id: z.string(),
+  enabled: z.boolean(),
+  holdingId: z.string(),
+  amount: z.number(),
+  cadence: dcaCadenceSchema,
+  dayOfPeriod: z.number(),
+  startDate: z.string(),
+  lastSettledDate: z.string().optional(),
+  notes: z.string().optional(),
+  createdAt: z.string(),
+});
+
 export const appStateSchema = z.object({
   holdings: z.array(holdingSchema),
   transactions: z.array(transactionSchema),
   vehicles: z.array(vehicleSchema),
   snapshots: z.array(snapshotSchema),
   goals: z.array(goalSchema),
+  dcaRules: z.array(dcaRuleSchema).optional().default([]),
   settings: settingsSchema,
 });
 

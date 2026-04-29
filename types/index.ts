@@ -86,11 +86,34 @@ export interface Settings {
   lastDataUpdateReminder?: string;
 }
 
+export type DcaCadence = "weekly" | "biweekly" | "monthly";
+
+export interface DcaRule {
+  id: string;
+  enabled: boolean;
+  holdingId: string;
+  /** Amount in EUR per occurrence. */
+  amount: number;
+  cadence: DcaCadence;
+  /**
+   * For weekly/biweekly: day of week (1 = Monday … 7 = Sunday).
+   * For monthly: day of month (1..28).
+   */
+  dayOfPeriod: number;
+  /** First occurrence date, ISO YYYY-MM-DD. */
+  startDate: string;
+  /** Last occurrence date that was either validated or skipped. */
+  lastSettledDate?: string;
+  notes?: string;
+  createdAt: string;
+}
+
 export interface AppState {
   holdings: Holding[];
   transactions: Transaction[];
   vehicles: Vehicle[];
   snapshots: Snapshot[];
   goals: Goal[];
+  dcaRules: DcaRule[];
   settings: Settings;
 }
