@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Wealth OS — iMac G3 Multicolor</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Lucida Grande', 'Helvetica Neue', sans-serif;
+    /* Fond bureau "Mac OS 9 / Aqua early" : dégradé doux */
+    background:
+      radial-gradient(ellipse at top, #d4e8f5 0%, #a8c8e8 50%, #7da8d0 100%);
+    min-height: 100vh;
+    padding: 24px;
+    color: #1a1a1a;
+    overflow-x: hidden;
+  }
+
+  /* Petits ronds décoratifs en background — bulles fruitées */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 10%;
+    left: -5%;
+    width: 280px;
+    height: 280px;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 150, 100, 0.5), rgba(255, 100, 50, 0.15) 60%, transparent 80%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(20px);
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: 5%;
+    right: -8%;
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle at 70% 30%, rgba(180, 100, 220, 0.4), rgba(140, 60, 200, 0.15) 60%, transparent 80%);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+    filter: blur(20px);
+  }
+
+  /* === Fenêtre principale "plastique transparent" === */
+  .window {
+    width: 1100px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 10;
+    /* L'enveloppe : plastique bleuté translucide style Blueberry */
+    background:
+      linear-gradient(135deg, rgba(180, 220, 250, 0.4) 0%, rgba(120, 180, 230, 0.3) 50%, rgba(80, 140, 200, 0.4) 100%);
+    backdrop-filter: blur(30px) saturate(1.4);
+    -webkit-backdrop-filter: blur(30px) saturate(1.4);
+    border-radius: 24px;
+    padding: 4px;
+    box-shadow:
+      /* Bordure plastique externe foncée */
+      0 0 0 2px rgba(40, 80, 130, 0.5),
+      /* Highlight intérieur top — la lumière à travers le plastique */
+      inset 0 2px 4px rgba(255, 255, 255, 0.8),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.15),
+      /* Ombre portée importante */
+      0 30px 80px rgba(0, 30, 80, 0.4),
+      0 10px 30px rgba(0, 0, 0, 0.3);
+    /* Effet pinstripes/texture plastique très subtil */
+    background-image:
+      linear-gradient(135deg, rgba(180, 220, 250, 0.4) 0%, rgba(120, 180, 230, 0.3) 50%, rgba(80, 140, 200, 0.4) 100%),
+      repeating-linear-gradient(
+        45deg,
+        rgba(255,255,255,0.03) 0px,
+        rgba(255,255,255,0.03) 1px,
+        transparent 1px,
+        transparent 4px
+      );
+  }
+
+  .window-inner {
+    background: rgba(248, 250, 253, 0.92);
+    border-radius: 20px;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  }
+
+  /* === Title bar avec poignée de fenêtre G3-style === */
+  .titlebar {
+    height: 42px;
+    background:
+      /* Highlight horizontal en haut (la lumière) */
+      linear-gradient(180deg,
+        rgba(255, 255, 255, 0.9) 0%,
+        rgba(220, 230, 245, 0.85) 30%,
+        rgba(180, 200, 225, 0.85) 70%,
+        rgba(150, 180, 210, 0.9) 100%);
+    border-bottom: 1px solid rgba(50, 90, 140, 0.3);
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    position: relative;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  }
+
+  /* Boutons feux Aqua — bombés brillants */
+  .traffic-lights {
+    display: flex;
+    gap: 9px;
+  }
+  .light {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 1px solid rgba(0, 0, 0, 0.5);
+    position: relative;
+    box-shadow: inset 0 -3px 4px rgba(0, 0, 0, 0.25);
+  }
+  .light.red {
+    background: radial-gradient(circle at 35% 30%, #ff9a9a 0%, #ee5550 50%, #c4302a 90%);
+  }
+  .light.yellow {
+    background: radial-gradient(circle at 35% 30%, #ffec8a 0%, #f5b73a 50%, #c8902a 90%);
+  }
+  .light.green {
+    background: radial-gradient(circle at 35% 30%, #a8ff8a 0%, #4ada48 50%, #2ba830 90%);
+  }
+  .light::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    width: 7px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    filter: blur(0.5px);
+  }
+
+  .titlebar-title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a3a6a;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.9);
+    letter-spacing: 0.3px;
+  }
+
+  /* === Toolbar onglets fruités === */
+  .toolbar {
+    height: 56px;
+    background: linear-gradient(180deg, rgba(240, 245, 252, 0.95) 0%, rgba(215, 225, 240, 0.95) 100%);
+    border-bottom: 1px solid rgba(50, 90, 140, 0.2);
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 6px;
+  }
+
+  /* Onglets style "boutons bonbon" multicolores */
+  .tab {
+    height: 34px;
+    padding: 0 16px;
+    border-radius: 17px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1a1a1a;
+    cursor: pointer;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(0, 0, 0, 0.35);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      inset 0 -2px 3px rgba(0, 0, 0, 0.1),
+      0 1px 2px rgba(0, 0, 0, 0.15);
+    background: linear-gradient(180deg, #fafafa 0%, #d8d8d8 50%, #c0c0c0 100%);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tab-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.3);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
+  }
+
+  .tab.active {
+    color: white;
+    text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.4);
+    background: linear-gradient(180deg, #6ec0f0 0%, #3a7fc4 50%, #2a5a9a 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.2),
+      0 1px 3px rgba(40, 90, 150, 0.4);
+    border-color: rgba(0, 0, 0, 0.5);
+  }
+
+  /* === Layout === */
+  .layout {
+    display: flex;
+    min-height: 720px;
+  }
+
+  /* === Sidebar plastique Blueberry === */
+  .sidebar {
+    width: 210px;
+    background:
+      linear-gradient(180deg,
+        rgba(180, 220, 250, 0.45) 0%,
+        rgba(140, 195, 235, 0.4) 50%,
+        rgba(110, 175, 220, 0.45) 100%);
+    border-right: 1px solid rgba(50, 90, 140, 0.25);
+    padding: 14px 0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  }
+
+  .sidebar-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: rgba(20, 50, 90, 0.7);
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+    padding: 10px 16px 4px;
+    letter-spacing: 0.8px;
+  }
+
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 16px;
+    font-size: 13px;
+    color: #0a2a5a;
+    cursor: pointer;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+    transition: background 0.1s;
+  }
+  .sidebar-item:hover {
+    background: rgba(255, 255, 255, 0.4);
+  }
+  .sidebar-item.active {
+    background: linear-gradient(180deg,
+      rgba(80, 150, 220, 0.95) 0%,
+      rgba(50, 110, 190, 0.95) 50%,
+      rgba(35, 85, 160, 0.95) 100%);
+    color: white;
+    text-shadow: 0 -1px 0 rgba(0, 0, 0, 0.4);
+    font-weight: 600;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  /* Icônes sidebar : petits badges colorés bonbon */
+  .sb-icon {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1px solid rgba(0,0,0,0.3);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.6),
+      inset 0 -1px 2px rgba(0,0,0,0.15);
+  }
+  .sb-icon-blue   { background: linear-gradient(180deg, #b8e0f8 0%, #5a9fd4 100%); }
+  .sb-icon-orange { background: linear-gradient(180deg, #ffd0a8 0%, #f08838 100%); }
+  .sb-icon-green  { background: linear-gradient(180deg, #c8f0a8 0%, #6ac038 100%); }
+  .sb-icon-purple { background: linear-gradient(180deg, #e0b8e8 0%, #9a58c0 100%); }
+  .sb-icon-pink   { background: linear-gradient(180deg, #ffc8d8 0%, #e858a0 100%); }
+
+  /* === Contenu principal === */
+  .content {
+    flex: 1;
+    padding: 22px;
+    background:
+      radial-gradient(ellipse at top right, rgba(255, 200, 150, 0.15) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom left, rgba(180, 150, 220, 0.15) 0%, transparent 50%),
+      linear-gradient(180deg, #f4f7fb 0%, #e6edf4 100%);
+    position: relative;
+  }
+
+  /* === Cartes plastique transparent === */
+  .card {
+    background: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(60, 100, 150, 0.25);
+    border-radius: 14px;
+    padding: 16px 18px;
+    box-shadow:
+      /* Highlight intérieur top — lumière qui traverse */
+      inset 0 1.5px 0 rgba(255, 255, 255, 1),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.08),
+      /* Ombre douce portée */
+      0 4px 12px rgba(40, 80, 130, 0.12),
+      0 2px 4px rgba(0, 0, 0, 0.06);
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Glossy reflection top sur les cartes */
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 30%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 100%);
+    pointer-events: none;
+    border-radius: 14px 14px 0 0;
+  }
+
+  .card-header {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: rgba(20, 60, 110, 0.8);
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.8);
+    position: relative;
+    z-index: 1;
+  }
+
+  /* === Hero net worth — Blueberry/Tangerine fade === */
+  .net-worth-card {
+    background:
+      linear-gradient(135deg,
+        rgba(255, 220, 180, 0.7) 0%,
+        rgba(180, 220, 250, 0.7) 50%,
+        rgba(220, 180, 240, 0.7) 100%);
+    backdrop-filter: blur(15px) saturate(1.3);
+    border: 2px solid rgba(60, 100, 150, 0.4);
+    border-radius: 18px;
+    padding: 26px 28px;
+    margin-bottom: 16px;
+    box-shadow:
+      inset 0 2px 0 rgba(255, 255, 255, 1),
+      inset 0 -2px 4px rgba(0, 0, 0, 0.08),
+      0 8px 24px rgba(40, 80, 130, 0.2);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Reflet "lumière dans le plastique" */
+  .net-worth-card::before {
+    content: '';
+    position: absolute;
+    top: -30%;
+    left: -10%;
+    width: 60%;
+    height: 100%;
+    background: radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.7) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .net-worth-card::after {
+    content: '';
+    position: absolute;
+    bottom: -40%;
+    right: -10%;
+    width: 50%;
+    height: 100%;
+    background: radial-gradient(ellipse at 50% 50%, rgba(255,255,255,0.4) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .net-worth-label {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: rgba(20, 50, 100, 0.8);
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.9);
+    position: relative;
+    z-index: 1;
+  }
+
+  .net-worth-value {
+    font-family: 'Lucida Grande', sans-serif;
+    font-size: 56px;
+    font-weight: 200;
+    color: #0a2855;
+    text-shadow:
+      0 2px 0 rgba(255, 255, 255, 0.7),
+      0 -1px 1px rgba(0, 0, 0, 0.1);
+    letter-spacing: -1.5px;
+    position: relative;
+    z-index: 1;
+    line-height: 1;
+  }
+
+  .net-worth-meta {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .pill-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 5px 12px;
+    border-radius: 14px;
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.8),
+      0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+  .pill-delta.pos {
+    background: linear-gradient(180deg, #c8f0a0 0%, #7ac848 50%, #5aa830 100%);
+    color: #1a4a08;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+  .pill-delta.neutral {
+    background: linear-gradient(180deg, #f0e8b8 0%, #d8c878 50%, #b8a858 100%);
+    color: #4a3a08;
+    text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  /* === Grille === */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 14px;
+  }
+  .col-8 { grid-column: span 8; }
+  .col-4 { grid-column: span 4; }
+  .col-6 { grid-column: span 6; }
+  .col-5 { grid-column: span 5; }
+  .col-3 { grid-column: span 3; }
+  .col-12 { grid-column: span 12; }
+
+  /* === Tableau === */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    position: relative;
+    z-index: 1;
+  }
+  th {
+    text-align: left;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: rgba(20, 60, 110, 0.75);
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(60, 100, 150, 0.3);
+    letter-spacing: 0.6px;
+    background: linear-gradient(180deg, rgba(220,235,250,0.6), rgba(195,215,235,0.6));
+    text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+  }
+  td {
+    padding: 9px 10px;
+    border-bottom: 1px solid rgba(60, 100, 150, 0.1);
+    font-family: 'Monaco', 'Lucida Console', monospace;
+    font-size: 11px;
+    color: #1a1a1a;
+  }
+  tr:nth-child(even) td {
+    background: rgba(180, 215, 245, 0.18);
+  }
+  tr:hover td {
+    background: rgba(120, 180, 230, 0.15);
+  }
+
+  .ticker {
+    font-weight: 700;
+    color: #0a3a7a;
+    font-family: 'Lucida Grande', sans-serif;
+  }
+
+  .pos { color: #1a7a1a; font-weight: 700; }
+  .neg { color: #b81818; font-weight: 700; }
+
+  /* === Pills catégorie — les 5 saveurs iMac G3 === */
+  .pill {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-size: 9.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    border: 1px solid rgba(0,0,0,0.35);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.8),
+      inset 0 -1px 1px rgba(0,0,0,0.1),
+      0 1px 1px rgba(0,0,0,0.1);
+    text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+  }
+  /* Blueberry - ETF */
+  .pill-etf {
+    background: linear-gradient(180deg, #b8e0f8 0%, #6ab4e0 50%, #3a8acc 100%);
+    color: #0a3a6a;
+  }
+  /* Grape - Crypto */
+  .pill-crypto {
+    background: linear-gradient(180deg, #e0b8e8 0%, #b878d0 50%, #8a48b0 100%);
+    color: #4a0a6a;
+  }
+  /* Lime - Stock */
+  .pill-stock {
+    background: linear-gradient(180deg, #d8f0a8 0%, #98d048 50%, #6aa820 100%);
+    color: #2a4a08;
+  }
+  /* Strawberry - Cash */
+  .pill-cash {
+    background: linear-gradient(180deg, #ffc0c8 0%, #f06878 50%, #c83040 100%);
+    color: #5a0a18;
+  }
+  /* Tangerine - Vehicle */
+  .pill-vehicle {
+    background: linear-gradient(180deg, #ffd0a8 0%, #f5984a 50%, #d06820 100%);
+    color: #6a2a0a;
+  }
+
+  /* === Boutons d'action === */
+  .action-btn {
+    display: block;
+    width: 100%;
+    padding: 9px 14px;
+    margin-bottom: 8px;
+    border-radius: 16px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.7);
+    background: linear-gradient(180deg, #ffffff 0%, #d8d8d8 50%, #b8b8b8 100%);
+    border: 1px solid rgba(0, 0, 0, 0.4);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,1),
+      inset 0 -2px 3px rgba(0,0,0,0.1),
+      0 1px 2px rgba(0,0,0,0.15);
+    color: #1a1a1a;
+    text-align: center;
+  }
+
+  .action-btn-primary {
+    background: linear-gradient(180deg, #ff9a4a 0%, #f06820 50%, #c84810 100%);
+    color: white;
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
+    border-color: rgba(120, 40, 0, 0.6);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.5),
+      inset 0 -2px 3px rgba(0,0,0,0.2),
+      0 2px 4px rgba(180, 70, 20, 0.4);
+  }
+
+  .action-btn-grape {
+    background: linear-gradient(180deg, #c898e8 0%, #9858c8 50%, #6828a0 100%);
+    color: white;
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
+    border-color: rgba(70, 20, 100, 0.6);
+  }
+
+  .action-btn-lime {
+    background: linear-gradient(180deg, #b8e060 0%, #80c020 50%, #5a9008 100%);
+    color: white;
+    text-shadow: 0 -1px 0 rgba(0,0,0,0.3);
+    border-color: rgba(40, 80, 0, 0.6);
+  }
+
+  /* === Donut & légende === */
+  .donut-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .legend {
+    width: 100%;
+    font-size: 11px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px dotted rgba(60, 100, 150, 0.2);
+  }
+  .legend-item:last-child { border: none; }
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    border: 1px solid rgba(0,0,0,0.3);
+    box-shadow: inset 0 1px 1px rgba(255,255,255,0.7);
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .legend-label { font-weight: 600; color: #0a2a5a; }
+  .legend-value {
+    font-family: Monaco, monospace;
+    font-size: 10.5px;
+    color: #1a1a1a;
+  }
+
+  /* === Goal progress === */
+  .goal-amount {
+    font-size: 28px;
+    font-weight: 300;
+    color: #0a2855;
+    margin: 6px 0 4px;
+    font-family: 'Lucida Grande', sans-serif;
+    letter-spacing: -0.5px;
+  }
+  .goal-amount-target {
+    font-size: 13px;
+    color: #888;
+    font-weight: 400;
+  }
+  .goal-bar-track {
+    height: 18px;
+    background: linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.05) 100%);
+    border: 1px solid rgba(60, 100, 150, 0.4);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow:
+      inset 0 1px 2px rgba(0,0,0,0.15),
+      0 1px 0 rgba(255,255,255,0.7);
+  }
+  .goal-bar-fill {
+    width: 73%;
+    height: 100%;
+    background: linear-gradient(180deg,
+      #ff9a4a 0%,
+      #f06820 50%,
+      #c84810 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.5),
+      inset 0 -2px 3px rgba(120, 30, 0, 0.4);
+    /* Effet stripes "iTunes progress bar" */
+    background-image:
+      linear-gradient(180deg, #ff9a4a 0%, #f06820 50%, #c84810 100%),
+      repeating-linear-gradient(
+        45deg,
+        rgba(255,255,255,0.2) 0px,
+        rgba(255,255,255,0.2) 4px,
+        transparent 4px,
+        transparent 8px
+      );
+    position: relative;
+  }
+  .goal-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+      45deg,
+      rgba(255,255,255,0.2) 0px,
+      rgba(255,255,255,0.2) 4px,
+      transparent 4px,
+      transparent 8px
+    );
+  }
+  .goal-meta {
+    font-size: 11px;
+    color: #555;
+    margin-top: 8px;
+  }
+
+  /* Footer note */
+  .footer-note {
+    text-align: center;
+    color: white;
+    font-size: 12px;
+    margin-top: 24px;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    opacity: 0.85;
+    letter-spacing: 0.5px;
+    position: relative;
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+<div class="window">
+  <div class="window-inner">
+
+    <!-- Title bar -->
+    <div class="titlebar">
+      <div class="traffic-lights">
+        <div class="light red"></div>
+        <div class="light yellow"></div>
+        <div class="light green"></div>
+      </div>
+      <div class="titlebar-title">Wealth OS — Tableau de bord</div>
+    </div>
+
+    <!-- Toolbar onglets bonbons -->
+    <div class="toolbar">
+      <button class="tab active"><span class="tab-dot" style="background:linear-gradient(180deg,#b8e0f8,#3a8acc)"></span>Dashboard</button>
+      <button class="tab"><span class="tab-dot" style="background:linear-gradient(180deg,#ffd0a8,#d06820)"></span>DCA</button>
+      <button class="tab"><span class="tab-dot" style="background:linear-gradient(180deg,#d8f0a8,#6aa820)"></span>Positions</button>
+      <button class="tab"><span class="tab-dot" style="background:linear-gradient(180deg,#ffc0c8,#c83040)"></span>Véhicules</button>
+      <button class="tab"><span class="tab-dot" style="background:linear-gradient(180deg,#e0b8e8,#8a48b0)"></span>Historique</button>
+      <button class="tab"><span class="tab-dot" style="background:linear-gradient(180deg,#b8e0f8,#3a8acc)"></span>Projection</button>
+      <button class="tab"><span class="tab-dot" style="background:linear-gradient(180deg,#ffd0a8,#d06820)"></span>Objectifs</button>
+    </div>
+
+    <div class="layout">
+
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="sidebar-section-title">Navigation</div>
+        <div class="sidebar-item active"><span class="sb-icon sb-icon-blue"></span>Dashboard</div>
+        <div class="sidebar-item"><span class="sb-icon sb-icon-orange"></span>Saisie DCA</div>
+        <div class="sidebar-item"><span class="sb-icon sb-icon-green"></span>Positions</div>
+        <div class="sidebar-item"><span class="sb-icon sb-icon-pink"></span>Véhicules</div>
+
+        <div class="sidebar-section-title">Analyse</div>
+        <div class="sidebar-item"><span class="sb-icon sb-icon-purple"></span>Historique</div>
+        <div class="sidebar-item"><span class="sb-icon sb-icon-blue"></span>Projection</div>
+        <div class="sidebar-item"><span class="sb-icon sb-icon-orange"></span>Objectifs</div>
+
+        <div class="sidebar-section-title">Système</div>
+        <div class="sidebar-item"><span class="sb-icon sb-icon-green"></span>Préférences</div>
+        <div class="sidebar-item"><span class="sb-icon sb-icon-pink"></span>Sauvegarde</div>
+      </div>
+
+      <!-- Content -->
+      <div class="content">
+
+        <!-- Hero net worth -->
+        <div class="net-worth-card">
+          <div class="net-worth-label">◆ Patrimoine net total</div>
+          <div class="net-worth-value">71 240 €</div>
+          <div class="net-worth-meta">
+            <span class="pill-delta pos">▲ +1 240 € (+1,8%) ce mois</span>
+            <span class="pill-delta neutral">YTD : +8 940 €</span>
+          </div>
+        </div>
+
+        <!-- Grid -->
+        <div class="grid">
+
+          <!-- Courbe -->
+          <div class="card col-8">
+            <div class="card-header">◆ Évolution patrimoine — 90 jours</div>
+            <div style="position: relative; z-index: 1;">
+              <svg viewBox="0 0 600 200" style="width:100%; height:200px;">
+                <defs>
+                  <linearGradient id="curveFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="#3a7fc4" stop-opacity="0.5"/>
+                    <stop offset="100%" stop-color="#3a7fc4" stop-opacity="0.05"/>
+                  </linearGradient>
+                  <linearGradient id="curveLine" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stop-color="#5a9fd4"/>
+                    <stop offset="50%" stop-color="#3a7fc4"/>
+                    <stop offset="100%" stop-color="#1a5f9a"/>
+                  </linearGradient>
+                </defs>
+                <!-- Grille subtile -->
+                <line x1="0" y1="50" x2="600" y2="50" stroke="rgba(60,100,150,0.1)" stroke-dasharray="2,4"/>
+                <line x1="0" y1="100" x2="600" y2="100" stroke="rgba(60,100,150,0.1)" stroke-dasharray="2,4"/>
+                <line x1="0" y1="150" x2="600" y2="150" stroke="rgba(60,100,150,0.1)" stroke-dasharray="2,4"/>
+
+                <!-- Aire patrimoine -->
+                <path d="M 0,150 L 50,142 L 100,135 L 150,128 L 200,132 L 250,118 L 300,108 L 350,112 L 400,90 L 450,78 L 500,65 L 550,52 L 600,42 L 600,200 L 0,200 Z" fill="url(#curveFill)"/>
+
+                <!-- Ligne capital pointillée -->
+                <path d="M 0,160 L 600,80" stroke="#888" stroke-width="1.5" stroke-dasharray="4,4" fill="none"/>
+
+                <!-- Ligne patrimoine -->
+                <path d="M 0,150 L 50,142 L 100,135 L 150,128 L 200,132 L 250,118 L 300,108 L 350,112 L 400,90 L 450,78 L 500,65 L 550,52 L 600,42" stroke="url(#curveLine)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+                <!-- Point final glossy -->
+                <circle cx="600" cy="42" r="6" fill="#3a7fc4" stroke="white" stroke-width="2"/>
+                <circle cx="600" cy="42" r="3" fill="#fff" opacity="0.7"/>
+
+                <!-- Labels -->
+                <text x="540" y="32" font-size="11" fill="#0a2855" font-weight="700" font-family="Lucida Grande">71 240 €</text>
+                <text x="540" y="76" font-size="9" fill="#666" font-family="Lucida Grande">capital : 60 600€</text>
+              </svg>
+              <div style="display: flex; gap: 6px; margin-top: 8px;">
+                <button style="height:24px; padding:0 10px; border-radius:12px; font-size:10px; font-weight:600; background:linear-gradient(180deg,#fff,#d0d0d0); border:1px solid rgba(0,0,0,0.3); cursor:pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);">30J</button>
+                <button style="height:24px; padding:0 10px; border-radius:12px; font-size:10px; font-weight:700; background:linear-gradient(180deg,#6ec0f0,#2a5a9a); color:white; border:1px solid rgba(0,0,0,0.4); cursor:pointer; text-shadow: 0 -1px 0 rgba(0,0,0,0.3); box-shadow: inset 0 1px 0 rgba(255,255,255,0.4);">90J</button>
+                <button style="height:24px; padding:0 10px; border-radius:12px; font-size:10px; font-weight:600; background:linear-gradient(180deg,#fff,#d0d0d0); border:1px solid rgba(0,0,0,0.3); cursor:pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);">1A</button>
+                <button style="height:24px; padding:0 10px; border-radius:12px; font-size:10px; font-weight:600; background:linear-gradient(180deg,#fff,#d0d0d0); border:1px solid rgba(0,0,0,0.3); cursor:pointer; box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);">Tout</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Donut -->
+          <div class="card col-4">
+            <div class="card-header">◆ Répartition</div>
+            <div class="donut-container">
+              <svg viewBox="0 0 130 130" width="150" height="150">
+                <defs>
+                  <radialGradient id="donutCenter" cx="50%" cy="50%" r="50%">
+                    <stop offset="0%" stop-color="rgba(255,255,255,0.95)"/>
+                    <stop offset="100%" stop-color="rgba(220,235,250,0.7)"/>
+                  </radialGradient>
+                </defs>
+                <!-- Track -->
+                <circle cx="65" cy="65" r="50" fill="none" stroke="rgba(0,0,0,0.08)" stroke-width="22"/>
+                <!-- ETF Blueberry 55% -->
+                <circle cx="65" cy="65" r="50" fill="none" stroke="#3a8acc" stroke-width="22" stroke-dasharray="173 314" transform="rotate(-90 65 65)"/>
+                <!-- Crypto Grape 20% -->
+                <circle cx="65" cy="65" r="50" fill="none" stroke="#9858c8" stroke-width="22" stroke-dasharray="63 314" stroke-dashoffset="-173" transform="rotate(-90 65 65)"/>
+                <!-- Stock Lime 10% -->
+                <circle cx="65" cy="65" r="50" fill="none" stroke="#80c020" stroke-width="22" stroke-dasharray="31 314" stroke-dashoffset="-236" transform="rotate(-90 65 65)"/>
+                <!-- Vehicle Tangerine 15% -->
+                <circle cx="65" cy="65" r="50" fill="none" stroke="#f06820" stroke-width="22" stroke-dasharray="47 314" stroke-dashoffset="-267" transform="rotate(-90 65 65)"/>
+                <!-- Centre glossy -->
+                <circle cx="65" cy="65" r="38" fill="url(#donutCenter)"/>
+                <text x="65" y="62" text-anchor="middle" font-size="10" font-weight="800" fill="#666" font-family="Lucida Grande" letter-spacing="0.5">TOTAL</text>
+                <text x="65" y="78" text-anchor="middle" font-size="14" font-weight="700" fill="#0a2855" font-family="Monaco">71,2k€</text>
+              </svg>
+              <div class="legend">
+                <div class="legend-item">
+                  <span><span class="legend-dot" style="background:linear-gradient(180deg,#b8e0f8,#3a8acc)"></span><span class="legend-label">ETF</span></span>
+                  <span class="legend-value">39 200€ · 55%</span>
+                </div>
+                <div class="legend-item">
+                  <span><span class="legend-dot" style="background:linear-gradient(180deg,#e0b8e8,#9858c8)"></span><span class="legend-label">Crypto</span></span>
+                  <span class="legend-value">14 250€ · 20%</span>
+                </div>
+                <div class="legend-item">
+                  <span><span class="legend-dot" style="background:linear-gradient(180deg,#d8f0a8,#80c020)"></span><span class="legend-label">Actions</span></span>
+                  <span class="legend-value">7 100€ · 10%</span>
+                </div>
+                <div class="legend-item">
+                  <span><span class="legend-dot" style="background:linear-gradient(180deg,#ffd0a8,#f06820)"></span><span class="legend-label">Véhicules</span></span>
+                  <span class="legend-value">10 690€ · 15%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick actions -->
+          <div class="card col-3">
+            <div class="card-header">◆ Actions</div>
+            <button class="action-btn action-btn-primary">+ Saisir DCA</button>
+            <button class="action-btn action-btn-grape">Mettre à jour prix</button>
+            <button class="action-btn action-btn-lime">Snapshot manuel</button>
+            <button class="action-btn">Exporter données</button>
+          </div>
+
+          <!-- Goal Supra -->
+          <div class="card col-5">
+            <div class="card-header">◆ Objectif — Toyota Supra 2029</div>
+            <div class="goal-amount">31 000 € <span class="goal-amount-target">/ 42 000 €</span></div>
+            <div class="goal-bar-track">
+              <div class="goal-bar-fill"></div>
+            </div>
+            <div class="goal-meta">73% atteint · 24 mois restants · besoin de ~458 €/mois</div>
+          </div>
+
+          <!-- Recent DCA -->
+          <div class="card col-4">
+            <div class="card-header">◆ DCA récent</div>
+            <table>
+              <thead>
+                <tr><th>Date</th><th>Actif</th><th style="text-align:right">€</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>22 avr</td><td><span class="ticker">VUAA</span></td><td style="text-align:right">250</td></tr>
+                <tr><td>15 avr</td><td><span class="ticker">BTC</span></td><td style="text-align:right">150</td></tr>
+                <tr><td>15 avr</td><td><span class="ticker">VUAA</span></td><td style="text-align:right">250</td></tr>
+                <tr><td>08 avr</td><td><span class="ticker">RKLB</span></td><td style="text-align:right">100</td></tr>
+                <tr><td>01 avr</td><td><span class="ticker">VUAA</span></td><td style="text-align:right">300</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Top positions -->
+          <div class="card col-12">
+            <div class="card-header">◆ Top positions</div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Catégorie</th>
+                  <th>Ticker</th>
+                  <th>Nom</th>
+                  <th style="text-align:right">Qté</th>
+                  <th style="text-align:right">PRU</th>
+                  <th style="text-align:right">Prix actuel</th>
+                  <th style="text-align:right">Valo €</th>
+                  <th style="text-align:right">+/- €</th>
+                  <th style="text-align:right">+/- %</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><span class="pill pill-etf">ETF</span></td>
+                  <td><span class="ticker">VUAA</span></td>
+                  <td>Vanguard S&P 500</td>
+                  <td style="text-align:right">340,5</td>
+                  <td style="text-align:right">98,40</td>
+                  <td style="text-align:right">112,30</td>
+                  <td style="text-align:right">38 238</td>
+                  <td style="text-align:right" class="pos">+4 730</td>
+                  <td style="text-align:right" class="pos">+14,1%</td>
+                </tr>
+                <tr>
+                  <td><span class="pill pill-crypto">CRYPTO</span></td>
+                  <td><span class="ticker">BTC</span></td>
+                  <td>Bitcoin</td>
+                  <td style="text-align:right">0,1842</td>
+                  <td style="text-align:right">62 100</td>
+                  <td style="text-align:right">71 800</td>
+                  <td style="text-align:right">13 226</td>
+                  <td style="text-align:right" class="pos">+1 786</td>
+                  <td style="text-align:right" class="pos">+15,6%</td>
+                </tr>
+                <tr>
+                  <td><span class="pill pill-stock">ACTION</span></td>
+                  <td><span class="ticker">MSFT</span></td>
+                  <td>Microsoft</td>
+                  <td style="text-align:right">12</td>
+                  <td style="text-align:right">340</td>
+                  <td style="text-align:right">385</td>
+                  <td style="text-align:right">4 620</td>
+                  <td style="text-align:right" class="pos">+540</td>
+                  <td style="text-align:right" class="pos">+13,2%</td>
+                </tr>
+                <tr>
+                  <td><span class="pill pill-stock">ACTION</span></td>
+                  <td><span class="ticker">RKLB</span></td>
+                  <td>Rocket Lab</td>
+                  <td style="text-align:right">85</td>
+                  <td style="text-align:right">22</td>
+                  <td style="text-align:right">19,40</td>
+                  <td style="text-align:right">1 649</td>
+                  <td style="text-align:right" class="neg">-221</td>
+                  <td style="text-align:right" class="neg">-11,8%</td>
+                </tr>
+                <tr>
+                  <td><span class="pill pill-vehicle">VÉHICULE</span></td>
+                  <td><span class="ticker">MX-5</span></td>
+                  <td>Mazda MX-5 2012</td>
+                  <td style="text-align:right">1</td>
+                  <td style="text-align:right">12 500</td>
+                  <td style="text-align:right">9 200</td>
+                  <td style="text-align:right">9 200</td>
+                  <td style="text-align:right" class="neg">-3 300</td>
+                  <td style="text-align:right" class="neg">-26,4%</td>
+                </tr>
+                <tr>
+                  <td><span class="pill pill-vehicle">VÉHICULE</span></td>
+                  <td><span class="ticker">R125</span></td>
+                  <td>Yamaha R125 2022</td>
+                  <td style="text-align:right">1</td>
+                  <td style="text-align:right">5 200</td>
+                  <td style="text-align:right">3 800</td>
+                  <td style="text-align:right">3 800</td>
+                  <td style="text-align:right" class="neg">-1 400</td>
+                  <td style="text-align:right" class="neg">-26,9%</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-note">Wealth OS · iMac G3 Multicolor v0.2 · Bondi · Tangerine · Lime · Strawberry · Grape · Blueberry</div>
+
+</body>
+</html>
