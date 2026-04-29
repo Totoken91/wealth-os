@@ -20,6 +20,15 @@ export default function Home() {
         <span className="h-6 w-6 rounded-md border border-black/30 bg-gradient-to-b from-grape-100 to-grape-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-1px_2px_rgba(0,0,0,0.15)]" />
         <span className="h-6 w-6 rounded-md border border-black/30 bg-gradient-to-b from-bondi-100 to-bondi-500 shadow-[inset_0_1px_0_rgba(255,255,255,0.6),inset_0_-1px_2px_rgba(0,0,0,0.15)]" />
       </div>
+
+      <p className="mt-10 text-sm">
+        <a
+          href="/kitchen"
+          className="font-semibold text-blueberry-700 underline-offset-4 hover:underline"
+        >
+          → Kitchen UI (atomiques)
+        </a>
+      </p>
     </main>
   );
 }

@@ -11,6 +11,15 @@ const config: Config = {
         sans: ["var(--font-sans)", "Lucida Grande", "Helvetica Neue", "sans-serif"],
         mono: ["var(--font-mono)", "Monaco", "Lucida Console", "monospace"],
       },
+      keyframes: {
+        stripes: {
+          "0%": { backgroundPosition: "0 0" },
+          "100%": { backgroundPosition: "8px 0" },
+        },
+      },
+      animation: {
+        stripes: "stripes 1s linear infinite",
+      },
       colors: {
         // Blueberry — ETF / Primary
         blueberry: {
