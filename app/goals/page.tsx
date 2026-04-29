@@ -5,10 +5,14 @@ import { AddGoalForm } from "@/components/forms/AddGoalForm";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { calculateBreakdown } from "@/lib/finance";
+import {
+  calculateObservedMonthlySavings,
+  planForGoal,
+} from "@/lib/finance";
+import { formatEuro } from "@/lib/formatters";
 import { useWealthStore } from "@/lib/store";
 import { useHydrated } from "@/lib/use-hydrated";
-import type { Goal } from "@/types";
+import type { AppState } from "@/types";
 
 export default function GoalsPage() {
   const hydrated = useHydrated();
@@ -21,31 +25,22 @@ export default function GoalsPage() {
 
   const [showForm, setShowForm] = useState(false);
 
-  const breakdown = useMemo(
-    () =>
-      calculateBreakdown({
-        holdings,
-        transactions,
-        vehicles,
-        snapshots,
-        goals,
-        settings,
-      }),
+  const state: AppState = useMemo(
+    () => ({
+      holdings,
+      transactions,
+      vehicles,
+      snapshots,
+      goals,
+      settings,
+    }),
     [holdings, transactions, vehicles, snapshots, goals, settings],
   );
 
-  const currentFor = (g: Goal): number => {
-    if (g.source === "cash") return breakdown.cash;
-    if (g.source === "investment")
-      return breakdown.etf + breakdown.crypto + breakdown.stock;
-    return (
-      breakdown.etf +
-      breakdown.crypto +
-      breakdown.stock +
-      breakdown.cash +
-      breakdown.vehicles
-    );
-  };
+  const observed = useMemo(
+    () => calculateObservedMonthlySavings(state),
+    [state],
+  );
 
   const sorted = useMemo(
     () =>
@@ -62,6 +57,23 @@ export default function GoalsPage() {
         <h1 className="font-sans text-3xl font-extralight tracking-tight">
           Objectifs
         </h1>
+        {hydrated && goals.length > 0 && (
+          <div className="text-[12px] text-blueberry-900/65">
+            {observed === null ? (
+              <>
+                Pas encore assez d&apos;historique pour mesurer ton épargne
+                — saisis un override sur tes objectifs ou attends 14 jours.
+              </>
+            ) : (
+              <>
+                Épargne observée 90j :{" "}
+                <span className="num font-bold text-blueberry-900">
+                  {formatEuro(observed)}/mois
+                </span>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {!hydrated ? (
@@ -83,14 +95,14 @@ export default function GoalsPage() {
           {sorted.length === 0 && !showForm ? (
             <Card header="Aucun objectif">
               <p className="text-[13px] text-blueberry-900/70">
-                Définis un objectif (apport immo, voyage, retraite anticipée…) :
-                Wealth OS calcule la cadence mensuelle nécessaire pour
-                l&apos;atteindre.
+                Définis un objectif (Supra A90, apport immo, voyage…) :
+                Wealth OS calcule chaque jour si tu es à l&apos;heure et ce
+                qu&apos;il faut ajuster.
               </p>
             </Card>
           ) : (
             sorted.map((g) => (
-              <GoalCard key={g.id} goal={g} currentAmount={currentFor(g)} />
+              <GoalCard key={g.id} goal={g} plan={planForGoal(g, state)} />
             ))
           )}
         </>

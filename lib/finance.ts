@@ -1,5 +1,6 @@
 import type {
   AppState,
+  Goal,
   Holding,
   HoldingType,
   Snapshot,
@@ -355,6 +356,186 @@ export function createSnapshot(state: AppState, id?: string): Snapshot {
 export function shouldCreateSnapshot(state: AppState, now: Date = new Date()): boolean {
   const today = dayKey(now);
   return !state.snapshots.some((s) => dayKey(s.date) === today);
+}
+
+/* ------------------------------------------------------------------ */
+/* Goal solver                                                         */
+/* ------------------------------------------------------------------ */
+
+const DAYS_PER_MONTH = 30.44; // average
+
+function currentAmountForGoal(goal: Goal, breakdown: SnapshotBreakdown): number {
+  if (goal.source === "cash") return breakdown.cash;
+  if (goal.source === "investment")
+    return breakdown.etf + breakdown.crypto + breakdown.stock;
+  return (
+    breakdown.etf +
+    breakdown.crypto +
+    breakdown.stock +
+    breakdown.cash +
+    breakdown.vehicles
+  );
+}
+
+/**
+ * Observed monthly savings rate based on net-worth deltas over `windowDays`.
+ * Picks the oldest snapshot within the window as baseline. Returns null if
+ * fewer than 14 days of history (not enough signal).
+ */
+export function calculateObservedMonthlySavings(
+  state: AppState,
+  windowDays = 90,
+  now: Date = new Date(),
+): number | null {
+  if (state.snapshots.length === 0) return null;
+  const cutoffMs = now.getTime() - windowDays * MS_PER_DAY;
+  const minDaysMs = 14 * MS_PER_DAY;
+  // Oldest snapshot within window
+  const inWindow = state.snapshots
+    .map((s) => ({ snap: s, ts: new Date(s.date).getTime() }))
+    .filter((x) => x.ts >= cutoffMs && x.ts <= now.getTime())
+    .sort((a, b) => a.ts - b.ts);
+  if (inWindow.length === 0) return null;
+  const baseline = inWindow[0];
+  const elapsedMs = now.getTime() - baseline.ts;
+  if (elapsedMs < minDaysMs) return null;
+  const liveNet = calculateTotalNet(state);
+  const elapsedDays = elapsedMs / MS_PER_DAY;
+  return ((liveNet - baseline.snap.totalNet) / elapsedDays) * DAYS_PER_MONTH;
+}
+
+export type GoalStatus =
+  | "reached"
+  | "on-track"
+  | "ahead"
+  | "behind"
+  | "unreachable"
+  | "unknown";
+
+export interface GoalPlan {
+  currentAmount: number;
+  effectiveTarget: number;
+  remaining: number;
+  monthsToTarget: number;
+  requiredMonthly: number;
+  observedMonthly: number | null;
+  declaredMonthly: number | null;
+  effectiveMonthly: number;
+  projectedReachDate: Date | null;
+  daysAhead: number | null;
+  status: GoalStatus;
+}
+
+/**
+ * Required monthly contribution (PMT) to reach FV from PV across `n` monthly
+ * periods at monthly rate `r`. Handles r = 0 and n ≤ 0 explicitly.
+ */
+function requiredPMT(pv: number, fv: number, n: number, r: number): number {
+  const remaining = fv - pv;
+  if (remaining <= 0) return 0;
+  if (n <= 0) return remaining; // must contribute everything immediately
+  if (r === 0) return remaining / n;
+  const factor = Math.pow(1 + r, n);
+  return ((fv - pv * factor) * r) / (factor - 1);
+}
+
+/**
+ * Project month-by-month from `pv` adding `pmt` each month at monthly rate `r`,
+ * until reaching `target` or until cap reached. Returns null if not reached.
+ */
+function monthsToReach(
+  pv: number,
+  pmt: number,
+  target: number,
+  r: number,
+  cap = 1200,
+): number | null {
+  if (pv >= target) return 0;
+  if (pmt <= 0 && r <= 0) return null;
+  let value = pv;
+  for (let m = 1; m <= cap; m += 1) {
+    value = value * (1 + r) + pmt;
+    if (value >= target) return m;
+  }
+  return null;
+}
+
+export function planForGoal(goal: Goal, state: AppState): GoalPlan {
+  const breakdown = calculateBreakdown(state);
+  const currentAmount = currentAmountForGoal(goal, breakdown);
+  const borrow = goal.borrowAmount ?? 0;
+  const effectiveTarget = goal.targetAmount - borrow;
+  const remaining = Math.max(0, effectiveTarget - currentAmount);
+
+  const now = new Date();
+  const target = new Date(goal.targetDate);
+  const monthsToTarget =
+    (target.getTime() - now.getTime()) / (MS_PER_DAY * DAYS_PER_MONTH);
+
+  const annualReturn = state.settings.defaultAnnualReturn;
+  const monthlyRate = annualReturn / 12;
+
+  const observedMonthly = calculateObservedMonthlySavings(state, 90, now);
+  const declaredMonthly =
+    goal.monthlyOverride !== undefined && goal.monthlyOverride !== null
+      ? goal.monthlyOverride
+      : null;
+  const effectiveMonthly = declaredMonthly ?? observedMonthly ?? 0;
+
+  const requiredMonthly = requiredPMT(
+    currentAmount,
+    effectiveTarget,
+    monthsToTarget,
+    monthlyRate,
+  );
+
+  const monthsNeeded = monthsToReach(
+    currentAmount,
+    effectiveMonthly,
+    effectiveTarget,
+    monthlyRate,
+  );
+  const projectedReachDate =
+    monthsNeeded === null
+      ? null
+      : new Date(now.getTime() + monthsNeeded * DAYS_PER_MONTH * MS_PER_DAY);
+  const daysAhead =
+    projectedReachDate === null
+      ? null
+      : Math.round(
+          (target.getTime() - projectedReachDate.getTime()) / MS_PER_DAY,
+        );
+
+  let status: GoalStatus;
+  if (currentAmount >= effectiveTarget) {
+    status = "reached";
+  } else if (declaredMonthly === null && observedMonthly === null) {
+    status = "unknown";
+  } else if (projectedReachDate === null) {
+    status = "unreachable";
+  } else if (daysAhead === null) {
+    status = "unknown";
+  } else if (daysAhead > 30) {
+    status = "ahead";
+  } else if (daysAhead < -30) {
+    status = "behind";
+  } else {
+    status = "on-track";
+  }
+
+  return {
+    currentAmount,
+    effectiveTarget,
+    remaining,
+    monthsToTarget,
+    requiredMonthly,
+    observedMonthly,
+    declaredMonthly,
+    effectiveMonthly,
+    projectedReachDate,
+    daysAhead,
+    status,
+  };
 }
 
 /**

@@ -66,6 +66,10 @@ export interface Goal {
   targetAmount: number;
   targetDate: string;
   source: "cash" | "investment" | "mixed";
+  /** Amount to be borrowed / not saved (e.g. 15000 € of car loan). */
+  borrowAmount?: number;
+  /** User-declared monthly savings override; takes priority over observed rate. */
+  monthlyOverride?: number;
   notes?: string;
   createdAt: string;
 }

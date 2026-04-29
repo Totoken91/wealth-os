@@ -14,6 +14,8 @@ const schema = z.object({
   targetAmount: z.coerce.number().positive("Montant > 0"),
   targetDate: z.string().min(1, "Date requise"),
   source: z.enum(["cash", "investment", "mixed"]),
+  borrowAmount: z.coerce.number().min(0).optional(),
+  monthlyOverride: z.coerce.number().min(0).optional(),
   notes: z.string().optional(),
 });
 
@@ -24,6 +26,8 @@ const initial: FormValues = {
   targetAmount: 0,
   targetDate: "",
   source: "mixed",
+  borrowAmount: undefined,
+  monthlyOverride: undefined,
   notes: "",
 };
 
@@ -59,6 +63,14 @@ export function AddGoalForm({ onCreated }: Props) {
       targetAmount: result.data.targetAmount,
       targetDate: result.data.targetDate,
       source: result.data.source,
+      borrowAmount:
+        result.data.borrowAmount && result.data.borrowAmount > 0
+          ? result.data.borrowAmount
+          : undefined,
+      monthlyOverride:
+        result.data.monthlyOverride && result.data.monthlyOverride > 0
+          ? result.data.monthlyOverride
+          : undefined,
       notes: result.data.notes || undefined,
     });
     toast.success("Objectif ajouté", { description: result.data.name });
@@ -108,6 +120,46 @@ export function AddGoalForm({ onCreated }: Props) {
             value={values.targetDate}
             onChange={(e) => update("targetDate", e.target.value)}
             className={errors.targetDate ? "border-strawberry-600" : undefined}
+          />
+        </Field>
+        <Field
+          label="Apport emprunté (€)"
+          hint="Montant non épargné, ex: 15000 pour un crédit voiture"
+        >
+          <Input
+            mono
+            type="number"
+            step="100"
+            placeholder="0"
+            value={values.borrowAmount ?? ""}
+            onChange={(e) =>
+              update(
+                "borrowAmount",
+                e.target.value === ""
+                  ? (undefined as never)
+                  : (Number(e.target.value) as never),
+              )
+            }
+          />
+        </Field>
+        <Field
+          label="Override épargne mensuelle (€)"
+          hint="Vide = utilise ton épargne observée des 90 derniers jours"
+        >
+          <Input
+            mono
+            type="number"
+            step="50"
+            placeholder="auto"
+            value={values.monthlyOverride ?? ""}
+            onChange={(e) =>
+              update(
+                "monthlyOverride",
+                e.target.value === ""
+                  ? (undefined as never)
+                  : (Number(e.target.value) as never),
+              )
+            }
           />
         </Field>
         <Field label="Notes (optionnel)">

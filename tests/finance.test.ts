@@ -6,17 +6,20 @@ import {
   calculateCurrentQuantity,
   calculateCurrentValueEUR,
   calculateMonthlyDcaActual,
+  calculateObservedMonthlySavings,
   calculateRealizedPnL,
   calculateTotalCapitalInvested,
   calculateTotalNet,
   calculateUnrealizedPnL,
   calculateVehicleCurrentValue,
   createSnapshot,
+  planForGoal,
   projectFutureValue,
   shouldCreateSnapshot,
 } from "@/lib/finance";
 import type {
   AppState,
+  Goal,
   Holding,
   Settings,
   Snapshot,
@@ -460,6 +463,224 @@ describe("projectFutureValue", () => {
 /* -------------------------------------------------------------------- */
 /* DCA actuals                                                           */
 /* -------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------- */
+/* Observed monthly savings + Goal solver                                */
+/* -------------------------------------------------------------------- */
+
+function makeSnapshot(over: Partial<Snapshot> = {}): Snapshot {
+  return {
+    id: `s-${Math.random()}`,
+    date: "2026-01-01T00:00:00Z",
+    totalNet: 0,
+    breakdown: { etf: 0, crypto: 0, stock: 0, cash: 0, vehicles: 0 },
+    capitalInvested: 0,
+    ...over,
+  };
+}
+
+describe("calculateObservedMonthlySavings", () => {
+  it("returns null when there are no snapshots", () => {
+    expect(calculateObservedMonthlySavings(emptyState())).toBeNull();
+  });
+
+  it("returns null when not enough history (< 14 days)", () => {
+    const now = new Date("2026-04-29T00:00:00Z");
+    const state: AppState = {
+      ...emptyState(),
+      snapshots: [
+        makeSnapshot({
+          id: "s1",
+          date: "2026-04-25T00:00:00Z",
+          totalNet: 10000,
+        }),
+      ],
+    };
+    expect(calculateObservedMonthlySavings(state, 90, now)).toBeNull();
+  });
+
+  it("computes ~1500 €/mois when net worth grew by 1500€ over 30 days", () => {
+    const now = new Date("2026-04-29T00:00:00Z");
+    const state: AppState = {
+      ...emptyState(),
+      // 1 cash holding worth 11500 EUR today (cash = 1 EUR each)
+      holdings: [
+        {
+          id: "h1",
+          type: "cash",
+          ticker: "CHK",
+          name: "Compte courant",
+          currency: "EUR",
+          currentPrice: 1,
+          currentPriceUpdatedAt: now.toISOString(),
+          createdAt: "2026-01-01T00:00:00Z",
+        },
+      ],
+      transactions: [
+        {
+          id: "tx",
+          holdingId: "h1",
+          type: "buy",
+          date: "2026-01-01",
+          quantity: 11500,
+          pricePerUnit: 1,
+          fees: 0,
+        },
+      ],
+      // baseline 30 days ago at 10000
+      snapshots: [
+        makeSnapshot({
+          id: "s1",
+          date: "2026-03-30T00:00:00Z",
+          totalNet: 10000,
+        }),
+      ],
+    };
+    const result = calculateObservedMonthlySavings(state, 90, now);
+    expect(result).not.toBeNull();
+    // (11500 - 10000) / 30 * 30.44 ≈ 1522
+    expect(result!).toBeCloseTo(1522, -1); // ~1500€/mois ±10
+  });
+
+  it("uses oldest snapshot in window as baseline", () => {
+    const now = new Date("2026-04-29T00:00:00Z");
+    const state: AppState = {
+      ...emptyState(),
+      holdings: [
+        {
+          id: "h1",
+          type: "cash",
+          ticker: "CHK",
+          name: "Cash",
+          currency: "EUR",
+          currentPrice: 1,
+          currentPriceUpdatedAt: now.toISOString(),
+          createdAt: "2026-01-01T00:00:00Z",
+        },
+      ],
+      transactions: [
+        {
+          id: "tx",
+          holdingId: "h1",
+          type: "buy",
+          date: "2026-01-01",
+          quantity: 13000,
+          pricePerUnit: 1,
+          fees: 0,
+        },
+      ],
+      snapshots: [
+        // both in window, but the oldest (5000@90j) is used as baseline
+        makeSnapshot({ id: "s1", date: "2026-01-30T00:00:00Z", totalNet: 5000 }),
+        makeSnapshot({ id: "s2", date: "2026-04-01T00:00:00Z", totalNet: 12000 }),
+      ],
+    };
+    const r = calculateObservedMonthlySavings(state, 120, now);
+    expect(r).not.toBeNull();
+    // (13000 - 5000) / 89 * 30.44 ≈ 2737
+    expect(r!).toBeGreaterThan(2500);
+    expect(r!).toBeLessThan(3000);
+  });
+});
+
+describe("planForGoal", () => {
+  function supraGoal(over: Partial<Goal> = {}): Goal {
+    return {
+      id: "g-supra",
+      name: "Toyota Supra",
+      targetAmount: 45000,
+      targetDate: "2027-12-31",
+      source: "mixed",
+      borrowAmount: 15000,
+      createdAt: "2026-01-01T00:00:00Z",
+      ...over,
+    };
+  }
+
+  it("effectiveTarget subtracts borrowAmount", () => {
+    const plan = planForGoal(supraGoal(), emptyState());
+    expect(plan.effectiveTarget).toBe(30000);
+  });
+
+  it("returns reached when current already covers effective target", () => {
+    const state: AppState = {
+      ...emptyState(),
+      holdings: [
+        {
+          id: "h1",
+          type: "cash",
+          ticker: "CHK",
+          name: "Cash",
+          currency: "EUR",
+          currentPrice: 1,
+          currentPriceUpdatedAt: "2026-04-29T00:00:00Z",
+          createdAt: "2026-01-01T00:00:00Z",
+        },
+      ],
+      transactions: [
+        {
+          id: "tx",
+          holdingId: "h1",
+          type: "buy",
+          date: "2026-01-01",
+          quantity: 35000,
+          pricePerUnit: 1,
+          fees: 0,
+        },
+      ],
+    };
+    const plan = planForGoal(supraGoal(), state);
+    expect(plan.status).toBe("reached");
+    expect(plan.remaining).toBe(0);
+  });
+
+  it("monthlyOverride takes priority over observed rate", () => {
+    const plan = planForGoal(
+      supraGoal({ monthlyOverride: 1500 }),
+      emptyState(),
+    );
+    expect(plan.declaredMonthly).toBe(1500);
+    expect(plan.effectiveMonthly).toBe(1500);
+    expect(plan.status).not.toBe("unknown");
+    expect(plan.projectedReachDate).not.toBeNull();
+  });
+
+  it("status=unknown when no override and no observed history", () => {
+    const plan = planForGoal(supraGoal(), emptyState());
+    expect(plan.observedMonthly).toBeNull();
+    expect(plan.declaredMonthly).toBeNull();
+    expect(plan.status).toBe("unknown");
+  });
+
+  it("status=unreachable when effort 0 and remaining > 0 but override forces 0", () => {
+    const plan = planForGoal(
+      supraGoal({ monthlyOverride: 0 }),
+      emptyState(),
+    );
+    expect(plan.effectiveMonthly).toBe(0);
+    expect(plan.projectedReachDate).toBeNull();
+    expect(plan.status).toBe("unreachable");
+  });
+
+  it("requiredMonthly with zero return reduces to remaining / months", () => {
+    const state: AppState = {
+      ...emptyState(),
+      settings: { ...baseSettings, defaultAnnualReturn: 0 },
+    };
+    // Pick a date 10 months out
+    const future = new Date();
+    future.setMonth(future.getMonth() + 10);
+    const goal = supraGoal({
+      targetDate: future.toISOString().slice(0, 10),
+      borrowAmount: 0,
+      targetAmount: 10000,
+    });
+    const plan = planForGoal(goal, state);
+    // remaining 10000 / 10 months ≈ 1000 (approximate; date arithmetic may be slightly off)
+    expect(plan.requiredMonthly).toBeGreaterThan(900);
+    expect(plan.requiredMonthly).toBeLessThan(1100);
+  });
+});
 
 describe("calculateMonthlyDcaActual", () => {
   it("filters by month and nets sells against buys", () => {

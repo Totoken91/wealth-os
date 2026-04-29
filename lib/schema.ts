@@ -65,6 +65,8 @@ const goalSchema = z.object({
   targetAmount: z.number(),
   targetDate: z.string(),
   source: goalSourceSchema,
+  borrowAmount: z.number().optional(),
+  monthlyOverride: z.number().optional(),
   notes: z.string().optional(),
   createdAt: z.string(),
 });
