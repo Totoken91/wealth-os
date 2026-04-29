@@ -6,11 +6,11 @@ import { TrafficLight } from "@/components/ui/TrafficLight";
 
 export default function KitchenPage() {
   return (
-    <main className="relative z-10 mx-auto max-w-[1100px] px-6 py-10 text-blueberry-900">
+    <div className="text-blueberry-900">
       <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-blueberry-800/80">
         ◆ Wealth OS — Kitchen
       </div>
-      <h1 className="mt-2 mb-8 font-sans text-4xl font-extralight tracking-tight">
+      <h1 className="mt-1 mb-6 font-sans text-3xl font-extralight tracking-tight">
         Atomiques UI — Palier B
       </h1>
 
@@ -87,6 +87,6 @@ export default function KitchenPage() {
           <span className="num ml-2 text-blueberry-900">42 350,75 €</span>
         </p>
       </Card>
-    </main>
+    </div>
   );
 }

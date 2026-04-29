@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { WindowFrame } from "@/components/layout/WindowFrame";
+import { TitleBar } from "@/components/layout/TitleBar";
+import { Toolbar } from "@/components/layout/Toolbar";
+import { Sidebar } from "@/components/layout/Sidebar";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,7 +28,23 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="fr" className={`${inter.variable} ${jetbrainsMono.variable}`}>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <WindowFrame>
+          <TitleBar />
+          <Toolbar />
+          <div className="flex min-h-[720px]">
+            <Sidebar />
+            <main
+              className="
+                flex-1 p-[22px] relative
+                bg-[radial-gradient(ellipse_at_top_right,rgba(255,200,150,0.15)_0%,transparent_50%),radial-gradient(ellipse_at_bottom_left,rgba(180,150,220,0.15)_0%,transparent_50%),linear-gradient(180deg,#f4f7fb_0%,#e6edf4_100%)]
+              "
+            >
+              {children}
+            </main>
+          </div>
+        </WindowFrame>
+      </body>
     </html>
   );
 }
