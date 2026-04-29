@@ -1,28 +1,32 @@
-import { NetWorthCard } from "@/components/dashboard/NetWorthCard";
+import Link from "next/link";
+import { LiveNetWorthCard } from "@/components/dashboard/LiveNetWorthCard";
 import { Card } from "@/components/ui/Card";
+import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState";
 
 export default function DashboardPage() {
   return (
     <div>
-      <NetWorthCard
-        value={71240}
-        monthDelta={1240}
-        monthDeltaPct={1.8}
-        ytdDelta={8940}
-      />
+      <LiveNetWorthCard />
+      <DashboardEmptyState />
 
-      <Card header="À venir aux prochains paliers">
+      <Card header="Aux prochains paliers">
         <p className="text-sm text-blueberry-900/80">
-          Courbe d&apos;évolution 90 jours, donut d&apos;allocation, quick
-          actions, top objectif et table des positions.
+          Courbe d&apos;évolution 90j, donut d&apos;allocation, quick actions,
+          objectifs, table positions et formulaire DCA.
         </p>
-        <p className="mt-3 text-sm">
-          <a
+        <p className="mt-3 text-sm flex gap-4">
+          <Link
+            href="/settings"
+            className="font-semibold text-blueberry-700 underline-offset-4 hover:underline"
+          >
+            → Préférences & sauvegarde
+          </Link>
+          <Link
             href="/kitchen"
             className="font-semibold text-blueberry-700 underline-offset-4 hover:underline"
           >
-            → Voir les atomiques (/kitchen)
-          </a>
+            → Kitchen UI
+          </Link>
         </p>
       </Card>
     </div>

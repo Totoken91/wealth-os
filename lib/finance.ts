@@ -357,6 +357,29 @@ export function shouldCreateSnapshot(state: AppState, now: Date = new Date()): b
   return !state.snapshots.some((s) => dayKey(s.date) === today);
 }
 
+/**
+ * Find the snapshot whose date is closest to `target` within `toleranceDays`.
+ * Returns undefined if none qualify.
+ */
+export function findSnapshotNear(
+  snapshots: Snapshot[],
+  target: Date,
+  toleranceDays: number,
+): Snapshot | undefined {
+  const targetMs = target.getTime();
+  const tolMs = toleranceDays * MS_PER_DAY;
+  let best: Snapshot | undefined;
+  let bestDiff = Infinity;
+  for (const s of snapshots) {
+    const diff = Math.abs(new Date(s.date).getTime() - targetMs);
+    if (diff <= tolMs && diff < bestDiff) {
+      best = s;
+      bestDiff = diff;
+    }
+  }
+  return best;
+}
+
 /* ------------------------------------------------------------------ */
 /* DCA actuals                                                         */
 /* ------------------------------------------------------------------ */

@@ -3,9 +3,9 @@ import { formatEuro, formatEuroDelta, formatPct } from "@/lib/formatters";
 
 interface NetWorthCardProps {
   value: number;
-  monthDelta: number;
-  monthDeltaPct: number;
-  ytdDelta: number;
+  monthDelta?: number;
+  monthDeltaPct?: number;
+  ytdDelta?: number;
   label?: string;
 }
 
@@ -16,8 +16,22 @@ export function NetWorthCard({
   ytdDelta,
   label = "Patrimoine net total",
 }: NetWorthCardProps) {
-  const monthTone = monthDelta > 0 ? "pos" : monthDelta < 0 ? "neg" : "neutral";
-  const arrow = monthDelta > 0 ? "▲" : monthDelta < 0 ? "▼" : "▶";
+  const monthTone =
+    monthDelta === undefined
+      ? "neutral"
+      : monthDelta > 0
+        ? "pos"
+        : monthDelta < 0
+          ? "neg"
+          : "neutral";
+  const arrow =
+    monthDelta === undefined
+      ? "▶"
+      : monthDelta > 0
+        ? "▲"
+        : monthDelta < 0
+          ? "▼"
+          : "▶";
   return (
     <div
       className="
@@ -52,15 +66,24 @@ export function NetWorthCard({
         >
           {formatEuro(value)}
         </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <PillDelta tone={monthTone}>
-            {arrow} {formatEuroDelta(monthDelta)} ({formatPct(monthDeltaPct)}){" "}
-            ce mois
-          </PillDelta>
-          <PillDelta tone="neutral">
-            YTD : {formatEuroDelta(ytdDelta)}
-          </PillDelta>
-        </div>
+        {(monthDelta !== undefined || ytdDelta !== undefined) && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {monthDelta !== undefined && (
+              <PillDelta tone={monthTone}>
+                {arrow} {formatEuroDelta(monthDelta)}
+                {monthDeltaPct !== undefined
+                  ? ` (${formatPct(monthDeltaPct)})`
+                  : ""}{" "}
+                ce mois
+              </PillDelta>
+            )}
+            {ytdDelta !== undefined && (
+              <PillDelta tone="neutral">
+                YTD : {formatEuroDelta(ytdDelta)}
+              </PillDelta>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
