@@ -39,6 +39,7 @@ const initial = (firstHoldingId: string): FormValues => ({
 
 export function AddTransactionForm() {
   const holdings = useWealthStore((s) => s.holdings);
+  const settingsRate = useWealthStore((s) => s.settings.currentEurUsdRate);
   const addTransaction = useWealthStore((s) => s.addTransaction);
 
   const firstId = holdings[0]?.id ?? "";
@@ -58,6 +59,13 @@ export function AddTransactionForm() {
     [holdings, values.holdingId],
   );
   const requireRate = selectedHolding?.currency === "USD";
+
+  // Auto-fill exchange rate from settings when switching to a USD holding
+  useEffect(() => {
+    if (requireRate && values.exchangeRate === undefined && settingsRate) {
+      setValues((s) => ({ ...s, exchangeRate: settingsRate }));
+    }
+  }, [requireRate, settingsRate, values.exchangeRate]);
 
   const update = <K extends keyof FormValues>(key: K, v: FormValues[K]) =>
     setValues((s) => ({ ...s, [key]: v }));
@@ -200,7 +208,12 @@ export function AddTransactionForm() {
         {requireRate && (
           <Field
             label="Taux EUR/USD"
-            hint={errors.exchangeRate ?? "EUR par 1 USD à la date d'achat"}
+            hint={
+              errors.exchangeRate ??
+              (settingsRate
+                ? "Pré-rempli depuis les Préférences — ajuste pour la date d'achat"
+                : "EUR par 1 USD à la date d'achat (requis)")
+            }
           >
             <Input
               mono

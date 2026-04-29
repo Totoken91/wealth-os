@@ -40,6 +40,19 @@ export function formatEuroDelta(value: number, maxDecimals = 0): string {
 /**
  * Format a percentage with French conventions (comma decimal, signed).
  */
+/**
+ * Format a quantity in plain decimal, never in scientific notation.
+ * Trailing zeros are trimmed. Defaults to up to 8 decimals (crypto-friendly).
+ */
+export function formatQuantity(value: number, maxDecimals = 8): string {
+  if (!Number.isFinite(value)) return "—";
+  const isNegative = value < 0;
+  const abs = Math.abs(value);
+  const fixed = abs.toFixed(maxDecimals);
+  const trimmed = fixed.replace(/\.?0+$/, "");
+  return `${isNegative ? "-" : ""}${trimmed || "0"}`;
+}
+
 export function formatPct(value: number, decimals = 1): string {
   if (!Number.isFinite(value)) return "—";
   const sign = value > 0 ? "+" : value < 0 ? "-" : "";

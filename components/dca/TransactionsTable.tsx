@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/Card";
 import { Pill } from "@/components/ui/Pill";
-import { formatEuro } from "@/lib/formatters";
+import { formatEuro, formatQuantity } from "@/lib/formatters";
 import { useWealthStore } from "@/lib/store";
 import type { Holding, Transaction } from "@/types";
 
@@ -91,10 +91,13 @@ export function TransactionsTable() {
                     </span>
                   </Td>
                   <Td mono align="right">
-                    {tx.quantity}
+                    {formatQuantity(
+                      tx.quantity,
+                      holding?.type === "crypto" ? 8 : 4,
+                    )}
                   </Td>
                   <Td mono align="right">
-                    {tx.pricePerUnit}
+                    {formatQuantity(tx.pricePerUnit, 4)}
                     {holding?.currency === "USD" ? " $" : " €"}
                   </Td>
                   <Td mono align="right">

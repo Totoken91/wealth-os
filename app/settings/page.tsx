@@ -197,7 +197,7 @@ export default function SettingsPage() {
         </div>
       </Card>
 
-      <Card header="Données">
+      <Card id="backup" header="Données" className="scroll-mt-20">
         <p className="text-[12.5px] text-blueberry-900/70 mb-4">
           Tes données vivent uniquement dans le localStorage de ce navigateur.
           Exporte régulièrement un backup JSON — c&apos;est ta seule sécurité
