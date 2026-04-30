@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   }
   const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(
     q,
-  )}&quotesCount=10&newsCount=0`;
+  )}&quotesCount=20&newsCount=0`;
   try {
     const res = await fetch(url, {
       headers: { "User-Agent": UA, Accept: "application/json" },

@@ -162,6 +162,12 @@ export async function searchYahooAssets(
       marketHint: q.exchDisp ?? q.exchange,
     });
   }
+  // For European users, surface EUR-denominated listings first when several
+  // exchange variants of the same ticker come back (e.g. VUAA.AS before VUAA.L).
+  out.sort((a, b) => {
+    if (a.currency === b.currency) return 0;
+    return a.currency === "EUR" ? -1 : 1;
+  });
   return out;
 }
 
@@ -202,7 +208,7 @@ export async function searchAssets(
     seen.add(key);
     merged.push(r);
   }
-  return merged.slice(0, 12);
+  return merged.slice(0, 20);
 }
 
 /**

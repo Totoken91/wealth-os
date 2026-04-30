@@ -132,15 +132,24 @@ export function TickerAutocomplete({ onSelect, placeholder }: Props) {
                 i === highlight ? "bg-blueberry-100/40" : "hover:bg-blueberry-100/25",
               )}
             >
-              <span className="font-bold text-blueberry-900 min-w-[60px]">
-                {r.ticker}
+              <span className="font-bold text-blueberry-900 min-w-[80px] font-mono tabular-nums text-[11px]">
+                {r.yahooSymbol ?? r.ticker}
               </span>
               <Pill flavor={r.type}>{r.type}</Pill>
               <span className="text-blueberry-900/85 truncate flex-1">
                 {r.name}
               </span>
               <span className="text-[10.5px] text-blueberry-900/55 whitespace-nowrap">
-                {r.currency}
+                <span
+                  className={cn(
+                    "font-bold",
+                    r.currency === "EUR"
+                      ? "text-lime-700"
+                      : "text-blueberry-900/70",
+                  )}
+                >
+                  {r.currency}
+                </span>
                 {r.marketHint ? ` · ${r.marketHint}` : ""}
                 {" · "}
                 <span
