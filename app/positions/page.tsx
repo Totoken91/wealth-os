@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BadUsdRatesPanel } from "@/components/dca/BadUsdRatesPanel";
 import { PositionsTable } from "@/components/positions/PositionsTable";
 import { UpdatePricesDialog } from "@/components/positions/UpdatePricesDialog";
 import { Button } from "@/components/ui/Button";
@@ -43,6 +44,7 @@ export default function PositionsPage() {
           {updateOpen && (
             <UpdatePricesDialog onClose={() => setUpdateOpen(false)} />
           )}
+          <BadUsdRatesPanel />
           <PositionsTable />
         </>
       ) : (

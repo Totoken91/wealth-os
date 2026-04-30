@@ -59,17 +59,15 @@ export async function fetchCryptoPricesEUR(
   return out;
 }
 
-/** Returns EUR per 1 USD. */
+/** Returns EUR per 1 USD. Routed through our edge proxy for resilience. */
 export async function fetchEurUsdRate(): Promise<number> {
-  const res = await fetch(
-    "https://api.frankfurter.app/latest?from=USD&to=EUR",
-  );
-  if (!res.ok) throw new Error(`Frankfurter ${res.status}`);
-  const data = (await res.json()) as { rates?: { EUR?: number } };
-  if (typeof data.rates?.EUR !== "number") {
-    throw new Error("Frankfurter: missing EUR rate");
+  const res = await fetch("/api/eur-usd-rate");
+  if (!res.ok) throw new Error(`eur-usd-rate ${res.status}`);
+  const data = (await res.json()) as { rate?: number; error?: string };
+  if (typeof data.rate !== "number") {
+    throw new Error(data.error ?? "missing EUR rate");
   }
-  return data.rates.EUR;
+  return data.rate;
 }
 
 export interface YahooQuote {

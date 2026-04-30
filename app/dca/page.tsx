@@ -5,6 +5,7 @@ import { AddDcaRuleForm } from "@/components/forms/AddDcaRuleForm";
 import { AddHoldingForm } from "@/components/forms/AddHoldingForm";
 import { AddTransactionForm } from "@/components/forms/AddTransactionForm";
 import { OpeningBalanceForm } from "@/components/forms/OpeningBalanceForm";
+import { BadUsdRatesPanel } from "@/components/dca/BadUsdRatesPanel";
 import { DcaDraftsPanel } from "@/components/dca/DcaDraftsPanel";
 import { DcaRulesList } from "@/components/dca/DcaRulesList";
 import { DcaStatsPanel } from "@/components/dca/DcaStatsPanel";
@@ -46,6 +47,8 @@ export default function DcaPage() {
                 </p>
               </Card>
             )}
+
+            <BadUsdRatesPanel />
 
             <DcaDraftsPanel />
 
