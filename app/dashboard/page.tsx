@@ -2,7 +2,7 @@
 
 import { AllocationDonut } from "@/components/dashboard/AllocationDonut";
 import { DashboardEmptyState } from "@/components/dashboard/DashboardEmptyState";
-import { LiveNetWorthCard } from "@/components/dashboard/LiveNetWorthCard";
+import { LiveCockpitCard } from "@/components/dashboard/LiveCockpitCard";
 import { PortfolioLineChart } from "@/components/dashboard/PortfolioLineChart";
 import { QuickActionsCard } from "@/components/dashboard/QuickActionsCard";
 import { RecentActivityCard } from "@/components/dashboard/RecentActivityCard";
@@ -14,7 +14,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <LiveNetWorthCard />
+      <LiveCockpitCard />
 
       {!hydrated ? (
         <div className="text-blueberry-900/60 text-sm">Chargement…</div>
