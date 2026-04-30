@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { LoanOptimizerPanel } from "@/components/goals/LoanOptimizerPanel";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -66,6 +67,7 @@ export function GoalCard({ goal, plan }: Props) {
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(goal.monthlyOverride ?? 0);
+  const [optimizerOpen, setOptimizerOpen] = useState(false);
 
   const pct =
     plan.effectiveTarget > 0
@@ -232,9 +234,22 @@ export function GoalCard({ goal, plan }: Props) {
                   Reset (utiliser l&apos;observation)
                 </Button>
               )}
+              <Button
+                variant="blueberry"
+                onClick={() => setOptimizerOpen((v) => !v)}
+              >
+                {optimizerOpen ? "Fermer l'optimiseur" : "Optimiser le financement"}
+              </Button>
             </>
           )}
         </div>
+      )}
+
+      {optimizerOpen && plan.status !== "reached" && (
+        <LoanOptimizerPanel
+          goal={goal}
+          onClose={() => setOptimizerOpen(false)}
+        />
       )}
 
       {goal.notes && (

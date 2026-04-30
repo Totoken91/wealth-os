@@ -563,10 +563,188 @@ export function findSnapshotNear(
 }
 
 /* ------------------------------------------------------------------ */
-/* DCA rules — pending drafts                                          */
+/* Loan optimizer (cash vs credit arbitrage)                           */
 /* ------------------------------------------------------------------ */
 
-export interface DcaDraft {
+/** Monthly payment for a fixed-rate amortizing loan. */
+export function monthlyAnnuity(
+  loan: number,
+  annualRate: number,
+  months: number,
+): number {
+  if (loan <= 0 || months <= 0) return 0;
+  const r = annualRate / 12;
+  if (r === 0) return loan / months;
+  const factor = Math.pow(1 + r, months);
+  return (loan * r * factor) / (factor - 1);
+}
+
+export interface FinancingScenario {
+  /** EUR taken from current wealth at purchase. */
+  downPayment: number;
+  /** EUR borrowed. */
+  loanAmount: number;
+  loanDurationMonths: number;
+  /** Annualised credit rate, e.g. 0.05. */
+  creditRate: number;
+  /** Computed monthly payment. */
+  monthlyPayment: number;
+  /** Sum of interest paid over the loan life. */
+  totalInterest: number;
+}
+
+export interface FinancingProjection extends FinancingScenario {
+  /** Wealth after `horizonMonths`, accounting for purchase impact + loan. */
+  finalWealth: number;
+}
+
+export interface FinancingOptimization {
+  scenarios: {
+    cashOnly: FinancingProjection;
+    maxLoan: FinancingProjection;
+    optimal: FinancingProjection;
+  };
+  feasible: boolean;
+  /** Reason if not feasible. */
+  reason?: string;
+}
+
+interface OptimizeInput {
+  targetAmount: number;
+  /** Wealth available today (e.g. liquid investments). */
+  currentWealth: number;
+  /** Wealth to keep untouched after purchase (emergency fund). */
+  reservedWealth: number;
+  /** Net amount the user can save monthly (already nets fixed expenses). */
+  monthlySavings: number;
+  /** Maximum monthly loan payment supportable. */
+  maxMonthlyPayment: number;
+  /** Maximum loan duration in months. */
+  maxLoanMonths: number;
+  /** Credit annual rate, e.g. 0.05 for 5%. */
+  creditRate: number;
+  /** Expected annual return on the user's portfolio, e.g. 0.07 for 7%. */
+  expectedReturn: number;
+  /** Comparison horizon in years. */
+  horizonYears: number;
+}
+
+function projectScenario(
+  input: OptimizeInput,
+  downPayment: number,
+  loanAmount: number,
+  loanDurationMonths: number,
+): FinancingProjection {
+  const monthly = monthlyAnnuity(
+    loanAmount,
+    input.creditRate,
+    loanDurationMonths,
+  );
+  const totalInterest = monthly * loanDurationMonths - loanAmount;
+  const horizonMonths = Math.max(1, Math.round(input.horizonYears * 12));
+  const r = input.expectedReturn / 12;
+  let wealth = input.currentWealth - downPayment;
+  for (let m = 1; m <= horizonMonths; m += 1) {
+    const contrib =
+      m <= loanDurationMonths
+        ? input.monthlySavings - monthly
+        : input.monthlySavings;
+    wealth = wealth * (1 + r) + contrib;
+  }
+  return {
+    downPayment,
+    loanAmount,
+    loanDurationMonths,
+    creditRate: input.creditRate,
+    monthlyPayment: monthly,
+    totalInterest: Math.max(0, totalInterest),
+    finalWealth: wealth,
+  };
+}
+
+const DURATIONS = [12, 24, 36, 48, 60, 72, 84];
+const LOAN_STEP = 500; // EUR
+
+/**
+ * Search the discretised (loanAmount, duration) space for the mix that
+ * maximises projected wealth at the chosen horizon, subject to the
+ * monthly-payment cap and reserved-wealth floor.
+ *
+ * Also returns two reference points: cash-only (no loan) and max-loan
+ * (largest loan that fits the constraints).
+ */
+export function optimizeFinancing(input: OptimizeInput): FinancingOptimization {
+  const { targetAmount, currentWealth, reservedWealth } = input;
+  const availableCash = Math.max(0, currentWealth - reservedWealth);
+
+  // Cash-only scenario (loan = 0). May be infeasible if user can't fully fund.
+  const cashOnly = projectScenario(
+    input,
+    Math.min(targetAmount, availableCash),
+    0,
+    0,
+  );
+
+  // Max-loan scenario: try the longest accepted duration with the largest loan
+  // whose monthly payment fits the cap.
+  let maxLoan: FinancingProjection = cashOnly;
+  for (let L = targetAmount; L >= 0; L -= LOAN_STEP) {
+    for (const d of DURATIONS.filter((d) => d <= input.maxLoanMonths)) {
+      const monthly = monthlyAnnuity(L, input.creditRate, d);
+      if (monthly > input.maxMonthlyPayment) continue;
+      const dp = targetAmount - L;
+      if (dp > availableCash) continue;
+      maxLoan = projectScenario(input, dp, L, d);
+      break;
+    }
+    if (maxLoan !== cashOnly) break;
+  }
+
+  // Search all (L, d) for the best wealth at horizon.
+  let optimal: FinancingProjection = cashOnly;
+  let feasibleAny = false;
+  for (let L = 0; L <= targetAmount; L += LOAN_STEP) {
+    const dp = targetAmount - L;
+    if (dp < 0 || dp > availableCash) continue;
+    feasibleAny = true;
+    if (L === 0) {
+      // cash-only point already covered
+      if (cashOnly.finalWealth > optimal.finalWealth) optimal = cashOnly;
+      continue;
+    }
+    for (const d of DURATIONS.filter((d) => d <= input.maxLoanMonths)) {
+      const monthly = monthlyAnnuity(L, input.creditRate, d);
+      if (monthly > input.maxMonthlyPayment) continue;
+      const proj = projectScenario(input, dp, L, d);
+      if (proj.finalWealth > optimal.finalWealth) optimal = proj;
+    }
+  }
+  // Edge step: include exactly targetAmount as max loan if step missed it
+  for (const d of DURATIONS.filter((d) => d <= input.maxLoanMonths)) {
+    const monthly = monthlyAnnuity(targetAmount, input.creditRate, d);
+    if (monthly > input.maxMonthlyPayment) continue;
+    const proj = projectScenario(input, 0, targetAmount, d);
+    if (proj.finalWealth > optimal.finalWealth) optimal = proj;
+  }
+
+  if (!feasibleAny) {
+    return {
+      scenarios: { cashOnly, maxLoan: cashOnly, optimal: cashOnly },
+      feasible: false,
+      reason:
+        "Apport minimum impossible : pas assez de liquidités après réserve d'urgence.",
+    };
+  }
+
+  return {
+    scenarios: { cashOnly, maxLoan, optimal },
+    feasible: true,
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* DCA rules — pending drafts                                          */
+/* ------------------------------------------------------------------ */export interface DcaDraft {
   ruleId: string;
   occurrenceDate: string; // YYYY-MM-DD
   holdingId: string;

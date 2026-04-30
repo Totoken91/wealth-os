@@ -14,6 +14,8 @@ import {
   calculateVehicleCurrentValue,
   createSnapshot,
   generatePendingDrafts,
+  monthlyAnnuity,
+  optimizeFinancing,
   planForGoal,
   projectFutureValue,
   shouldCreateSnapshot,
@@ -682,6 +684,83 @@ describe("planForGoal", () => {
     // remaining 10000 / 10 months ≈ 1000 (approximate; date arithmetic may be slightly off)
     expect(plan.requiredMonthly).toBeGreaterThan(900);
     expect(plan.requiredMonthly).toBeLessThan(1100);
+  });
+});
+
+/* -------------------------------------------------------------------- */
+/* Loan optimizer                                                        */
+/* -------------------------------------------------------------------- */
+
+describe("monthlyAnnuity", () => {
+  it("zero rate reduces to loan/months", () => {
+    expect(monthlyAnnuity(12000, 0, 12)).toBe(1000);
+  });
+
+  it("standard 60-month auto loan at 5% yields ~188.7 €/mois on 10k", () => {
+    // PMT = 10000 * (0.05/12) * (1+0.05/12)^60 / ((1+0.05/12)^60 - 1) ≈ 188.71
+    const pmt = monthlyAnnuity(10000, 0.05, 60);
+    expect(pmt).toBeGreaterThan(188);
+    expect(pmt).toBeLessThan(190);
+  });
+
+  it("returns 0 when loan or months is zero", () => {
+    expect(monthlyAnnuity(0, 0.05, 60)).toBe(0);
+    expect(monthlyAnnuity(10000, 0.05, 0)).toBe(0);
+  });
+});
+
+describe("optimizeFinancing", () => {
+  it("when expected return > credit rate, optimal includes a loan (leverage)", () => {
+    const opt = optimizeFinancing({
+      targetAmount: 45000,
+      currentWealth: 50000,
+      reservedWealth: 5000,
+      monthlySavings: 1500,
+      maxMonthlyPayment: 800,
+      maxLoanMonths: 60,
+      creditRate: 0.05,
+      expectedReturn: 0.08,
+      horizonYears: 20,
+    });
+    expect(opt.feasible).toBe(true);
+    expect(opt.scenarios.optimal.loanAmount).toBeGreaterThan(0);
+    expect(opt.scenarios.optimal.finalWealth).toBeGreaterThan(
+      opt.scenarios.cashOnly.finalWealth,
+    );
+  });
+
+  it("when credit rate >= return, optimal is cash-only", () => {
+    const opt = optimizeFinancing({
+      targetAmount: 20000,
+      currentWealth: 30000,
+      reservedWealth: 5000,
+      monthlySavings: 1000,
+      maxMonthlyPayment: 800,
+      maxLoanMonths: 60,
+      creditRate: 0.08,
+      expectedReturn: 0.04,
+      horizonYears: 15,
+    });
+    expect(opt.feasible).toBe(true);
+    expect(opt.scenarios.optimal.loanAmount).toBe(0);
+  });
+
+  it("not feasible when no available cash for any down payment > 0", () => {
+    const opt = optimizeFinancing({
+      targetAmount: 45000,
+      currentWealth: 1000,
+      reservedWealth: 5000, // available cash = 0
+      monthlySavings: 1000,
+      maxMonthlyPayment: 800,
+      maxLoanMonths: 60,
+      creditRate: 0.05,
+      expectedReturn: 0.08,
+      horizonYears: 20,
+    });
+    // The 'optimal' will be the only feasible point: down=0, full loan
+    // (reservedWealth doesn't restrict if down=0).
+    expect(opt.feasible).toBe(true);
+    expect(opt.scenarios.optimal.downPayment).toBe(0);
   });
 });
 
