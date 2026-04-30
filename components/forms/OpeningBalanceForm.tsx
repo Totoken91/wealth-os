@@ -22,6 +22,7 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 export function OpeningBalanceForm({ holdingId, onCreated, onCancel }: Props) {
   const holdings = useWealthStore((s) => s.holdings);
   const transactions = useWealthStore((s) => s.transactions);
+  const settingsRate = useWealthStore((s) => s.settings.currentEurUsdRate);
   const addTransaction = useWealthStore((s) => s.addTransaction);
 
   const initialId = holdingId ?? holdings[0]?.id ?? "";
@@ -46,8 +47,28 @@ export function OpeningBalanceForm({ holdingId, onCreated, onCancel }: Props) {
     [transactions, selectedId],
   );
 
+  // Current price expressed in EUR (handles USD holdings via the live rate)
+  const currentPriceEur = useMemo(() => {
+    if (!holding) return 0;
+    if (holding.currency === "USD") {
+      return holding.currentPrice * (settingsRate ?? 1);
+    }
+    return holding.currentPrice;
+  }, [holding, settingsRate]);
+
+  // Capital actually used: explicit if filled, otherwise market value
+  const effectiveCapital =
+    capitalEur && capitalEur > 0
+      ? capitalEur
+      : qty && qty > 0
+        ? qty * currentPriceEur
+        : 0;
+
   const pruEur =
-    qty && capitalEur && qty > 0 ? capitalEur / qty : 0;
+    qty && qty > 0 && effectiveCapital > 0 ? effectiveCapital / qty : 0;
+
+  const usingMarketFallback =
+    (!capitalEur || capitalEur <= 0) && qty !== undefined && qty > 0;
 
   const submit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -59,11 +80,13 @@ export function OpeningBalanceForm({ holdingId, onCreated, onCancel }: Props) {
       toast.error("Quantité > 0 requise");
       return;
     }
-    if (!capitalEur || capitalEur <= 0) {
-      toast.error("Capital investi > 0 requis");
+    if (effectiveCapital <= 0) {
+      toast.error(
+        "Capital invalide — renseigne le capital ou un prix actuel > 0",
+      );
       return;
     }
-    const pricePerUnitEur = capitalEur / qty;
+    const pricePerUnitEur = effectiveCapital / qty;
     addTransaction({
       holdingId: holding.id,
       type: "buy",
@@ -76,10 +99,14 @@ export function OpeningBalanceForm({ holdingId, onCreated, onCancel }: Props) {
       exchangeRate: holding.currency === "USD" ? 1 : undefined,
       notes:
         notes.trim() ||
-        `Solde d'ouverture (migration) — ${qty} unités pour ${formatEuro(capitalEur)}`,
+        (usingMarketFallback
+          ? `Solde d'ouverture (migration) — ${qty} unités, PRU = prix de marché (P&L initialisé à 0)`
+          : `Solde d'ouverture (migration) — ${qty} unités pour ${formatEuro(effectiveCapital)}`),
     });
     toast.success(`Solde d'ouverture enregistré`, {
-      description: `${holding.ticker} : ${qty} unités, capital ${formatEuro(capitalEur)}`,
+      description: usingMarketFallback
+        ? `${holding.ticker} : ${qty} unités, PRU = prix actuel (${formatEuro(currentPriceEur, 2)})`
+        : `${holding.ticker} : ${qty} unités, capital ${formatEuro(effectiveCapital)}`,
     });
     setQty(undefined);
     setCapitalEur(undefined);
@@ -101,12 +128,13 @@ export function OpeningBalanceForm({ holdingId, onCreated, onCancel }: Props) {
   return (
     <Card header="Solde d'ouverture (migration)">
       <p className="text-[12px] text-blueberry-900/70 mb-3">
-        Tu as déjà des positions ailleurs ? Déclare directement ta{" "}
-        <span className="font-semibold">quantité actuelle</span> et le{" "}
-        <span className="font-semibold">capital total investi en €</span>.
-        Wealth&nbsp;OS crée une transaction de synthèse pour matérialiser
-        ton point de départ — pas besoin de ressaisir des centaines
-        d&apos;achats.
+        Tu as déjà des positions ailleurs ? Déclare ta{" "}
+        <span className="font-semibold">quantité actuelle</span>. Le capital
+        total investi est{" "}
+        <span className="font-semibold">optionnel</span> : si tu ne le connais
+        pas (cas typique d&apos;un DCA crypto sur plusieurs années), Wealth&nbsp;OS
+        prend le prix de marché actuel comme PRU et ton P&amp;L latent
+        démarrera à 0 €.
       </p>
 
       <form
@@ -147,11 +175,23 @@ export function OpeningBalanceForm({ holdingId, onCreated, onCancel }: Props) {
             placeholder="ex: 0,027"
           />
         </Field>
-        <Field label="Capital total investi (€)" className="col-span-2">
+        <Field
+          label="Capital total investi (€) — optionnel"
+          hint={
+            usingMarketFallback
+              ? `Vide → PRU = prix de marché (${formatEuro(currentPriceEur, 2)}/unité), P&L latent démarre à 0`
+              : "Total que tu as mis depuis le début, frais inclus"
+          }
+          className="col-span-2"
+        >
           <NumberInput
             value={capitalEur}
             onChange={(v) => setCapitalEur(v)}
-            placeholder="ex: 1500"
+            placeholder={
+              qty && qty > 0 && currentPriceEur > 0
+                ? `auto : ${formatEuro(qty * currentPriceEur)}`
+                : "ex: 1500"
+            }
           />
         </Field>
         <div className="col-span-2 sm:col-span-2 flex flex-col justify-end">
@@ -160,6 +200,11 @@ export function OpeningBalanceForm({ holdingId, onCreated, onCancel }: Props) {
           </div>
           <div className="num text-[14px] font-bold text-blueberry-900 mt-0.5">
             {pruEur > 0 ? formatEuro(pruEur, 4) : "—"}
+            {usingMarketFallback && pruEur > 0 && (
+              <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-blueberry-700/70">
+                = marché
+              </span>
+            )}
           </div>
         </div>
         <Field label="Notes (optionnel)" className="col-span-2 sm:col-span-4">
