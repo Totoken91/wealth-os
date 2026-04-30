@@ -137,6 +137,10 @@ export function PositionDetail({ id }: Props) {
         </div>
       )}
 
+      {holding.currency === "USD" && rate && rate !== 1 && (
+        <BadRatesFixer holding={holding} txs={txs} liveRate={rate} />
+      )}
+
       <div className="mb-4 flex flex-wrap gap-3">
         {!showAddTx && (
           <Button variant="lime" onClick={() => setShowAddTx(true)}>
@@ -223,6 +227,90 @@ export function PositionDetail({ id }: Props) {
       </Card>
 
       <TransactionsCard holding={holding} txs={txs} />
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------- */
+/* Bad-rates fixer (USD transactions stored with rate=1 / undefined) */
+/* ---------------------------------------------------------------- */
+
+function BadRatesFixer({
+  holding,
+  txs,
+  liveRate,
+}: {
+  holding: Holding;
+  txs: Transaction[];
+  liveRate: number;
+}) {
+  const updateTransaction = useWealthStore((s) => s.updateTransaction);
+
+  const bad = useMemo(
+    () =>
+      txs.filter(
+        (t) =>
+          t.exchangeRate === undefined ||
+          t.exchangeRate === null ||
+          t.exchangeRate === 1,
+      ),
+    [txs],
+  );
+
+  if (holding.currency !== "USD" || bad.length === 0) return null;
+
+  const totalUsd = bad.reduce(
+    (s, t) => s + t.quantity * t.pricePerUnit,
+    0,
+  );
+  const beforeEur = totalUsd; // current calc (rate = 1)
+  const afterEur = totalUsd * liveRate;
+  const delta = beforeEur - afterEur;
+
+  const fixAll = () => {
+    if (
+      !confirm(
+        `Appliquer le taux EUR/USD du jour (${liveRate.toFixed(4)}) à ${bad.length} transaction${bad.length > 1 ? "s" : ""} sans taux historique ?\n\nLe capital investi et le PRU seront recalculés.`,
+      )
+    ) {
+      return;
+    }
+    for (const t of bad) {
+      updateTransaction(t.id, { exchangeRate: liveRate });
+    }
+    toast.success(
+      `${bad.length} transaction${bad.length > 1 ? "s" : ""} corrigée${bad.length > 1 ? "s" : ""}`,
+      {
+        description: `Taux ${liveRate.toFixed(4)} appliqué — capital recalculé`,
+      },
+    );
+  };
+
+  return (
+    <div className="mb-4 px-3 py-2.5 rounded-[10px] bg-strawberry-100/40 border border-strawberry-700/30 text-[12px] text-strawberry-900">
+      <div className="flex items-baseline justify-between gap-3 flex-wrap">
+        <div className="flex-1 min-w-[280px]">
+          <div className="font-bold mb-0.5">
+            ⚠ {bad.length} transaction{bad.length > 1 ? "s" : ""} USD sans
+            taux EUR/USD historique
+          </div>
+          <div className="text-[11.5px] text-strawberry-900/80">
+            Stockée{bad.length > 1 ? "s" : ""} avec taux = 1, ce qui traite
+            le prix USD comme s&apos;il était en euros. Capital affiché :{" "}
+            <span className="font-mono font-bold">
+              {formatEuro(beforeEur)}
+            </span>{" "}
+            au lieu de{" "}
+            <span className="font-mono font-bold">
+              {formatEuro(afterEur)}
+            </span>{" "}
+            (écart {formatEuro(delta)}).
+          </div>
+        </div>
+        <Button variant="strawberry" onClick={fixAll}>
+          Appliquer le taux du jour ({liveRate.toFixed(4)})
+        </Button>
+      </div>
     </div>
   );
 }

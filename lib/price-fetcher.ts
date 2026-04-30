@@ -133,6 +133,20 @@ export async function searchCryptoAssets(
   }));
 }
 
+/** European exchange suffixes commonly used for UCITS ETFs and EU stocks. */
+const EU_SUFFIXES = [".AS", ".DE", ".PA", ".MI", ".L", ".SW", ".HE", ".ST"];
+
+const EXCHANGE_LABEL: Record<string, string> = {
+  ".AS": "Amsterdam",
+  ".DE": "Xetra",
+  ".PA": "Paris",
+  ".MI": "Milan",
+  ".L": "Londres",
+  ".SW": "Suisse",
+  ".HE": "Helsinki",
+  ".ST": "Stockholm",
+};
+
 export async function searchYahooAssets(
   query: string,
 ): Promise<AssetSearchResult[]> {
@@ -146,12 +160,14 @@ export async function searchYahooAssets(
   const data = (await res.json()) as { quotes?: YahooQuoteHit[] };
   const quotes = data.quotes ?? [];
   const out: AssetSearchResult[] = [];
+  const seenSymbols = new Set<string>();
   for (const q of quotes) {
     if (!q.symbol) continue;
     const type = mapYahooQuoteType(q.quoteType);
     if (!type) continue;
     if (type === "crypto") continue; // prefer CoinGecko entries for crypto
     const currency = q.currency === "EUR" ? "EUR" : "USD";
+    seenSymbols.add(q.symbol.toUpperCase());
     out.push({
       source: "yahoo",
       type,
@@ -162,6 +178,42 @@ export async function searchYahooAssets(
       marketHint: q.exchDisp ?? q.exchange,
     });
   }
+
+  // Fallback: Yahoo's search often skips European listings of well-known
+  // tickers (e.g. VUAA.AS for the EUR-denominated UCITS S&P 500). When the
+  // query looks like a bare ticker (3-5 letters, no dot), probe each known
+  // EU suffix via the quote endpoint in parallel and merge whatever comes
+  // back. This is bounded: max 8 cheap quote calls.
+  const looksLikeBareTicker = /^[A-Za-z]{3,5}$/.test(q);
+  if (looksLikeBareTicker) {
+    const upper = q.toUpperCase();
+    const probes = await Promise.all(
+      EU_SUFFIXES.filter((suf) => !seenSymbols.has(`${upper}${suf}`)).map(
+        async (suf) => {
+          const symbol = `${upper}${suf}`;
+          const quote = await fetchYahooPrice(symbol).catch(() => null);
+          if (!quote) return null;
+          return { symbol, quote, suffix: suf };
+        },
+      ),
+    );
+    for (const probe of probes) {
+      if (!probe) continue;
+      const { symbol, quote, suffix } = probe;
+      // Heuristic: assume ETF for UCITS-style probed symbols (AAA.AS, VUAA.DE),
+      // since those that come back here are typically European ETFs.
+      out.push({
+        source: "yahoo",
+        type: "etf",
+        ticker: upper,
+        name: `${upper} (${EXCHANGE_LABEL[suffix] ?? suffix.slice(1)})`,
+        currency: quote.currency,
+        yahooSymbol: symbol,
+        marketHint: EXCHANGE_LABEL[suffix] ?? suffix.slice(1),
+      });
+    }
+  }
+
   // For European users, surface EUR-denominated listings first when several
   // exchange variants of the same ticker come back (e.g. VUAA.AS before VUAA.L).
   out.sort((a, b) => {
