@@ -37,12 +37,18 @@ const initial = (firstHoldingId: string): FormValues => ({
   notes: "",
 });
 
-export function AddTransactionForm() {
+interface Props {
+  /** Pre-select and lock the position (used from a position detail page). */
+  holdingId?: string;
+  onCreated?: () => void;
+}
+
+export function AddTransactionForm({ holdingId, onCreated }: Props = {}) {
   const holdings = useWealthStore((s) => s.holdings);
   const settingsRate = useWealthStore((s) => s.settings.currentEurUsdRate);
   const addTransaction = useWealthStore((s) => s.addTransaction);
 
-  const firstId = holdings[0]?.id ?? "";
+  const firstId = holdingId ?? holdings[0]?.id ?? "";
   const [values, setValues] = useState<FormValues>(() => initial(firstId));
   const [errors, setErrors] = useState<
     Partial<Record<keyof FormValues, string>>
@@ -103,7 +109,8 @@ export function AddTransactionForm() {
     toast.success("Transaction enregistrée", {
       description: `${result.data.type === "buy" ? "Achat" : "Vente"} ${result.data.quantity} × ${selectedHolding?.ticker ?? "?"}`,
     });
-    setValues(initial(values.holdingId));
+    setValues(initial(holdingId ?? values.holdingId));
+    onCreated?.();
   };
 
   if (holdings.length === 0) {
@@ -140,6 +147,7 @@ export function AddTransactionForm() {
           <Select
             value={values.holdingId}
             onChange={(e) => update("holdingId", e.target.value)}
+            disabled={!!holdingId}
           >
             {holdings.map((h) => (
               <option key={h.id} value={h.id}>

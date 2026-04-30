@@ -6,7 +6,8 @@ export type ButtonVariant =
   | "tangerine"
   | "grape"
   | "lime"
-  | "blueberry";
+  | "blueberry"
+  | "strawberry";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   // gradient #fafafa → #d8d8d8 → #c0c0c0, dark text
@@ -20,6 +21,8 @@ const VARIANTS: Record<ButtonVariant, string> = {
   lime: "bg-gradient-to-b from-[#b8e060] via-[#80c020] to-[#5a9008] text-white [text-shadow:0_-1px_0_rgba(0,0,0,0.3)] border-[rgba(40,80,0,0.6)]",
   blueberry:
     "bg-gradient-to-b from-[#6ec0f0] via-[#3a7fc4] to-[#2a5a9a] text-white [text-shadow:0_-1px_0_rgba(0,0,0,0.3)] border-[rgba(0,40,90,0.6)]",
+  strawberry:
+    "bg-gradient-to-b from-[#ff9a8a] via-[#e85648] to-[#b02818] text-white [text-shadow:0_-1px_0_rgba(0,0,0,0.3)] border-[rgba(110,20,10,0.6)]",
 };
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {

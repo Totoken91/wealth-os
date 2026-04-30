@@ -50,7 +50,7 @@ export default function DcaPage() {
             <DcaRulesList />
 
             {holdings.length > 0 && (
-              <div className="mb-4 flex flex-wrap gap-2">
+              <div className="mb-4 flex flex-wrap gap-3">
                 {!showRuleForm && (
                   <Button
                     variant="tangerine"

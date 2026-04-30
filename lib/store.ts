@@ -113,6 +113,7 @@ export const useWealthStore = create<Store>()(
             ...s,
             holdings: s.holdings.filter((h) => h.id !== id),
             transactions: s.transactions.filter((t) => t.holdingId !== id),
+            dcaRules: s.dcaRules.filter((r) => r.holdingId !== id),
           }),
         ),
 
