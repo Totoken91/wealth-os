@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { AutoRateBootstrap } from "@/components/layout/AutoRateBootstrap";
 import { WindowFrame } from "@/components/layout/WindowFrame";
 import { TitleBar } from "@/components/layout/TitleBar";
 import { Toolbar } from "@/components/layout/Toolbar";
@@ -45,6 +46,7 @@ export default function RootLayout({
             </main>
           </div>
         </WindowFrame>
+        <AutoRateBootstrap />
         <Toaster />
       </body>
     </html>

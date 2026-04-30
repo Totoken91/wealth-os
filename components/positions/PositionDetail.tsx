@@ -123,6 +123,20 @@ export function PositionDetail({ id }: Props) {
       </div>
       <div className="mb-5 text-[13px] text-blueberry-900/70">{holding.name}</div>
 
+      {holding.currency === "USD" && (!rate || rate === 1) && (
+        <div className="mb-4 px-3 py-2 rounded-[10px] bg-tangerine-100/40 border border-tangerine-700/30 text-[12px] text-tangerine-900">
+          ⚠ Taux EUR/USD non configuré — la valeur en € est calculée comme si
+          le prix USD était déjà en euros (≈ +8% surévalué). Va dans{" "}
+          <Link
+            href="/settings"
+            className="font-bold text-tangerine-800 underline-offset-4 hover:underline"
+          >
+            Préférences
+          </Link>{" "}
+          ou clique « Mettre à jour les prix » pour fetcher le taux du jour.
+        </div>
+      )}
+
       <div className="mb-4 flex flex-wrap gap-3">
         {!showAddTx && (
           <Button variant="lime" onClick={() => setShowAddTx(true)}>
