@@ -138,7 +138,9 @@ export async function searchYahooAssets(
 ): Promise<AssetSearchResult[]> {
   const q = query.trim();
   if (q.length < 2) return [];
-  const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=10&newsCount=0`;
+  // Routed through our edge proxy: Yahoo's v1/search endpoint blocks browser
+  // origins via CORS, so we fetch it server-side.
+  const url = `/api/yahoo-search?q=${encodeURIComponent(q)}`;
   const res = await fetch(url);
   if (!res.ok) return [];
   const data = (await res.json()) as { quotes?: YahooQuoteHit[] };
@@ -210,7 +212,7 @@ export async function searchAssets(
 export async function fetchYahooPrice(
   symbol: string,
 ): Promise<YahooQuote | null> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+  const url = `/api/yahoo-quote?symbol=${encodeURIComponent(symbol)}`;
   const res = await fetch(url);
   if (!res.ok) return null;
   const data = (await res.json()) as {
