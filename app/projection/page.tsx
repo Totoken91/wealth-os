@@ -12,7 +12,8 @@ import {
 } from "recharts";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Field, Input } from "@/components/ui/Input";
+import { Field } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Toggle } from "@/components/ui/Toggle";
 import {
   projectFutureValue,
@@ -138,25 +139,15 @@ export default function ProjectionPage() {
                     label="Capital initial (€)"
                     hint={`Patrimoine actuel : ${formatEuro(liveNet)}`}
                   >
-                    <Input
-                      mono
-                      type="number"
-                      step="100"
+                    <NumberInput
                       value={form.initialCapital}
-                      onChange={(e) =>
-                        set("initialCapital", Number(e.target.value))
-                      }
+                      onChange={(v) => set("initialCapital", v ?? 0)}
                     />
                   </Field>
                   <Field label="DCA mensuel (€)">
-                    <Input
-                      mono
-                      type="number"
-                      step="50"
+                    <NumberInput
                       value={form.monthlyContribution}
-                      onChange={(e) =>
-                        set("monthlyContribution", Number(e.target.value))
-                      }
+                      onChange={(v) => set("monthlyContribution", v ?? 0)}
                     />
                   </Field>
                   <SliderField
@@ -341,31 +332,19 @@ export default function ProjectionPage() {
             <Card header="Événements futurs">
               <div className="grid grid-cols-2 gap-2">
                 <Field label="Année (+N)">
-                  <Input
-                    mono
-                    type="number"
-                    min="1"
-                    max={form.years}
+                  <NumberInput
                     value={draftEvent.year}
-                    onChange={(e) =>
-                      setDraftEvent((s) => ({
-                        ...s,
-                        year: Number(e.target.value),
-                      }))
+                    onChange={(v) =>
+                      setDraftEvent((s) => ({ ...s, year: v ?? 1 }))
                     }
+                    maxDecimals={0}
                   />
                 </Field>
                 <Field label="Montant (€)">
-                  <Input
-                    mono
-                    type="number"
-                    step="1000"
+                  <NumberInput
                     value={draftEvent.amount}
-                    onChange={(e) =>
-                      setDraftEvent((s) => ({
-                        ...s,
-                        amount: Number(e.target.value),
-                      }))
+                    onChange={(v) =>
+                      setDraftEvent((s) => ({ ...s, amount: v ?? 0 }))
                     }
                   />
                 </Field>

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Pill } from "@/components/ui/Pill";
 import { generatePendingDrafts } from "@/lib/finance";
 import { formatEuro } from "@/lib/formatters";
@@ -198,13 +198,10 @@ export function DcaDraftsPanel() {
                 <label className="text-[9.5px] font-extrabold uppercase tracking-wider text-blueberry-800/65 block mb-0.5">
                   Prix ({holding.currency})
                 </label>
-                <Input
-                  mono
-                  type="number"
-                  step="0.0001"
-                  value={edit.pricePerUnit || ""}
-                  onChange={(e) =>
-                    updateEdit(key, { pricePerUnit: Number(e.target.value) })
+                <NumberInput
+                  value={edit.pricePerUnit || undefined}
+                  onChange={(v) =>
+                    updateEdit(key, { pricePerUnit: v ?? 0 })
                   }
                 />
               </div>
@@ -212,14 +209,9 @@ export function DcaDraftsPanel() {
                 <label className="text-[9.5px] font-extrabold uppercase tracking-wider text-blueberry-800/65 block mb-0.5">
                   Quantité
                 </label>
-                <Input
-                  mono
-                  type="number"
-                  step="0.00000001"
-                  value={edit.quantity || ""}
-                  onChange={(e) =>
-                    updateEdit(key, { quantity: Number(e.target.value) })
-                  }
+                <NumberInput
+                  value={edit.quantity || undefined}
+                  onChange={(v) => updateEdit(key, { quantity: v ?? 0 })}
                 />
               </div>
               {holding.currency === "USD" && (
@@ -227,19 +219,9 @@ export function DcaDraftsPanel() {
                   <label className="text-[9.5px] font-extrabold uppercase tracking-wider text-blueberry-800/65 block mb-0.5">
                     Taux EUR/USD
                   </label>
-                  <Input
-                    mono
-                    type="number"
-                    step="0.0001"
-                    value={edit.exchangeRate ?? ""}
-                    onChange={(e) =>
-                      updateEdit(key, {
-                        exchangeRate:
-                          e.target.value === ""
-                            ? undefined
-                            : Number(e.target.value),
-                      })
-                    }
+                  <NumberInput
+                    value={edit.exchangeRate}
+                    onChange={(v) => updateEdit(key, { exchangeRate: v })}
                   />
                 </div>
               )}

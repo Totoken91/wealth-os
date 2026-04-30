@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
-import { Field, Input } from "@/components/ui/Input";
+import { Field } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import {
   calculateBreakdown,
   calculateObservedMonthlySavings,
@@ -393,12 +394,9 @@ function SliderField({
         className="w-full mt-1 accent-blueberry-600"
       />
       <div className="mt-1">
-        <Input
-          mono
-          type="number"
-          step={step}
+        <NumberInput
           value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
+          onChange={(v) => onChange(v ?? 0)}
           className="h-7 text-[11px]"
         />
       </div>

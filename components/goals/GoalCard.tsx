@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { LoanOptimizerPanel } from "@/components/goals/LoanOptimizerPanel";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import type { GoalPlan } from "@/lib/finance";
 import { formatEuro } from "@/lib/formatters";
@@ -195,12 +195,9 @@ export function GoalCard({ goal, plan }: Props) {
                 Si je mets
               </span>
               <div className="w-32">
-                <Input
-                  mono
-                  type="number"
-                  step="50"
-                  value={draft || ""}
-                  onChange={(e) => setDraft(Number(e.target.value))}
+                <NumberInput
+                  value={draft || undefined}
+                  onChange={(v) => setDraft(v ?? 0)}
                   autoFocus
                 />
               </div>

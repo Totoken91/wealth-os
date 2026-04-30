@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Select } from "@/components/ui/Select";
 import { useWealthStore } from "@/lib/store";
 import type { VehicleType } from "@/types";
@@ -109,28 +110,18 @@ export function AddVehicleForm({ onCreated }: Props) {
           />
         </Field>
         <Field label="Prix d'achat (€)" hint={errors.purchasePrice}>
-          <Input
-            mono
-            type="number"
-            step="100"
-            value={values.purchasePrice || ""}
-            onChange={(e) =>
-              update("purchasePrice", Number(e.target.value) as never)
-            }
+          <NumberInput
+            value={values.purchasePrice || undefined}
+            onChange={(v) => update("purchasePrice", (v ?? 0) as never)}
             className={
               errors.purchasePrice ? "border-strawberry-600" : undefined
             }
           />
         </Field>
         <Field label="Valeur actuelle (€)" hint={errors.currentValue}>
-          <Input
-            mono
-            type="number"
-            step="100"
-            value={values.currentValue || ""}
-            onChange={(e) =>
-              update("currentValue", Number(e.target.value) as never)
-            }
+          <NumberInput
+            value={values.currentValue || undefined}
+            onChange={(v) => update("currentValue", (v ?? 0) as never)}
             className={
               errors.currentValue ? "border-strawberry-600" : undefined
             }
@@ -144,15 +135,10 @@ export function AddVehicleForm({ onCreated }: Props) {
           }
           className="sm:col-span-2"
         >
-          <Input
-            mono
-            type="number"
-            step="0.01"
-            min="0"
-            max="1"
+          <NumberInput
             value={values.annualDepreciation}
-            onChange={(e) =>
-              update("annualDepreciation", Number(e.target.value) as never)
+            onChange={(v) =>
+              update("annualDepreciation", (v ?? 0) as never)
             }
             className={
               errors.annualDepreciation ? "border-strawberry-600" : undefined

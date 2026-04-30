@@ -8,6 +8,7 @@ import { AddTransactionForm } from "@/components/forms/AddTransactionForm";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Pill } from "@/components/ui/Pill";
 import {
   calculateAveragePurchasePrice,
@@ -260,13 +261,10 @@ function EditPositionPanel({
           />
         </Field>
         <Field label={`Prix actuel (${holding.currency})`}>
-          <Input
-            mono
-            type="number"
-            step="0.0001"
-            value={v.currentPrice || ""}
-            onChange={(e) =>
-              setV((s) => ({ ...s, currentPrice: Number(e.target.value) }))
+          <NumberInput
+            value={v.currentPrice || undefined}
+            onChange={(val) =>
+              setV((s) => ({ ...s, currentPrice: val ?? 0 }))
             }
           />
         </Field>
@@ -492,49 +490,37 @@ function EditTxRow({
         </select>
       </Td>
       <Td align="right">
-        <input
-          type="number"
-          step="0.00000001"
-          value={v.quantity || ""}
-          onChange={(e) =>
-            setV((s) => ({ ...s, quantity: Number(e.target.value) }))
-          }
-          className="w-full h-7 px-2 rounded-[6px] text-[11px] font-mono text-right bg-white/95 border border-blueberry-700/40"
+        <NumberInput
+          value={v.quantity || undefined}
+          onChange={(val) => setV((s) => ({ ...s, quantity: val ?? 0 }))}
+          className="h-7 px-2 rounded-[6px] text-[11px] text-right"
         />
       </Td>
       <Td align="right">
-        <input
-          type="number"
-          step="0.0001"
-          value={v.pricePerUnit || ""}
-          onChange={(e) =>
-            setV((s) => ({ ...s, pricePerUnit: Number(e.target.value) }))
+        <NumberInput
+          value={v.pricePerUnit || undefined}
+          onChange={(val) =>
+            setV((s) => ({ ...s, pricePerUnit: val ?? 0 }))
           }
-          className="w-full h-7 px-2 rounded-[6px] text-[11px] font-mono text-right bg-white/95 border border-blueberry-700/40"
+          className="h-7 px-2 rounded-[6px] text-[11px] text-right"
         />
       </Td>
       {requireRate && (
         <Td align="right">
-          <input
-            type="number"
-            step="0.0001"
-            value={v.exchangeRate || ""}
-            onChange={(e) =>
-              setV((s) => ({ ...s, exchangeRate: Number(e.target.value) }))
+          <NumberInput
+            value={v.exchangeRate || undefined}
+            onChange={(val) =>
+              setV((s) => ({ ...s, exchangeRate: val ?? 0 }))
             }
-            className="w-full h-7 px-2 rounded-[6px] text-[11px] font-mono text-right bg-white/95 border border-blueberry-700/40"
+            className="h-7 px-2 rounded-[6px] text-[11px] text-right"
           />
         </Td>
       )}
       <Td align="right">
-        <input
-          type="number"
-          step="0.01"
-          value={v.fees || ""}
-          onChange={(e) =>
-            setV((s) => ({ ...s, fees: Number(e.target.value) }))
-          }
-          className="w-full h-7 px-2 rounded-[6px] text-[11px] font-mono text-right bg-white/95 border border-blueberry-700/40"
+        <NumberInput
+          value={v.fees || undefined}
+          onChange={(val) => setV((s) => ({ ...s, fees: val ?? 0 }))}
+          className="h-7 px-2 rounded-[6px] text-[11px] text-right"
         />
       </Td>
       <Td align="right">

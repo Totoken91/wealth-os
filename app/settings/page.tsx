@@ -4,7 +4,8 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Field, Input } from "@/components/ui/Input";
+import { Field } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Toggle } from "@/components/ui/Toggle";
 import { parseAppStateJson } from "@/lib/schema";
 import { useWealthStore } from "@/lib/store";
@@ -76,10 +77,6 @@ export default function SettingsPage() {
     toast.success("Données effacées");
   };
 
-  const num = (v: number | undefined) => (v === undefined ? "" : String(v));
-  const numOrUndef = (s: string) =>
-    s.trim() === "" ? undefined : Number(s);
-
   return (
     <div className="text-blueberry-900">
       <div className="text-[10px] font-extrabold uppercase tracking-[0.1em] text-blueberry-800/80">
@@ -95,15 +92,10 @@ export default function SettingsPage() {
             label="Rendement annuel par défaut"
             hint="Utilisé pour les projections (ex: 0.07 = 7%)"
           >
-            <Input
-              mono
-              type="number"
-              step="0.01"
+            <NumberInput
               value={settings.defaultAnnualReturn}
-              onChange={(e) =>
-                updateSettings({
-                  defaultAnnualReturn: Number(e.target.value),
-                })
+              onChange={(v) =>
+                updateSettings({ defaultAnnualReturn: v ?? 0 })
               }
             />
           </Field>
@@ -111,15 +103,10 @@ export default function SettingsPage() {
             label="Décote véhicule par défaut"
             hint="Taux annuel (ex: 0.15 = 15%)"
           >
-            <Input
-              mono
-              type="number"
-              step="0.01"
+            <NumberInput
               value={settings.defaultVehicleDepreciation}
-              onChange={(e) =>
-                updateSettings({
-                  defaultVehicleDepreciation: Number(e.target.value),
-                })
+              onChange={(v) =>
+                updateSettings({ defaultVehicleDepreciation: v ?? 0 })
               }
             />
           </Field>
@@ -127,17 +114,10 @@ export default function SettingsPage() {
             label="Taux EUR/USD actuel"
             hint="Utilisé pour valoriser les holdings USD"
           >
-            <Input
-              mono
-              type="number"
-              step="0.001"
+            <NumberInput
               placeholder="ex: 0.92"
-              value={num(settings.currentEurUsdRate)}
-              onChange={(e) =>
-                updateSettings({
-                  currentEurUsdRate: numOrUndef(e.target.value),
-                })
-              }
+              value={settings.currentEurUsdRate}
+              onChange={(v) => updateSettings({ currentEurUsdRate: v })}
             />
           </Field>
         </div>
@@ -146,31 +126,17 @@ export default function SettingsPage() {
       <Card header="Targets DCA">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Objectif hebdomadaire (€)">
-            <Input
-              mono
-              type="number"
-              step="10"
+            <NumberInput
               placeholder="ex: 250"
-              value={num(settings.weeklyDcaTarget)}
-              onChange={(e) =>
-                updateSettings({
-                  weeklyDcaTarget: numOrUndef(e.target.value),
-                })
-              }
+              value={settings.weeklyDcaTarget}
+              onChange={(v) => updateSettings({ weeklyDcaTarget: v })}
             />
           </Field>
           <Field label="Objectif mensuel (€)">
-            <Input
-              mono
-              type="number"
-              step="50"
+            <NumberInput
               placeholder="ex: 1000"
-              value={num(settings.monthlyDcaTarget)}
-              onChange={(e) =>
-                updateSettings({
-                  monthlyDcaTarget: numOrUndef(e.target.value),
-                })
-              }
+              value={settings.monthlyDcaTarget}
+              onChange={(v) => updateSettings({ monthlyDcaTarget: v })}
             />
           </Field>
         </div>

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Select } from "@/components/ui/Select";
 import { useWealthStore } from "@/lib/store";
 import type { DcaCadence } from "@/types";
@@ -82,7 +83,6 @@ export function AddDcaRuleForm({ onCreated }: Props) {
 
   const isWeekly =
     values.cadence === "weekly" || values.cadence === "biweekly";
-  const dayMax = isWeekly ? 7 : 28;
   const dayLabel = isWeekly ? "Jour de la semaine (1=lun … 7=dim)" : "Jour du mois (1-28)";
 
   return (
@@ -101,14 +101,9 @@ export function AddDcaRuleForm({ onCreated }: Props) {
           </Select>
         </Field>
         <Field label="Montant (€)" hint={errors.amount}>
-          <Input
-            mono
-            type="number"
-            step="10"
-            value={values.amount || ""}
-            onChange={(e) =>
-              update("amount", Number(e.target.value) as never)
-            }
+          <NumberInput
+            value={values.amount || undefined}
+            onChange={(v) => update("amount", (v ?? 0) as never)}
             className={errors.amount ? "border-strawberry-600" : undefined}
           />
         </Field>
@@ -132,15 +127,10 @@ export function AddDcaRuleForm({ onCreated }: Props) {
           </Select>
         </Field>
         <Field label={dayLabel} hint={errors.dayOfPeriod}>
-          <Input
-            mono
-            type="number"
-            min="1"
-            max={dayMax}
-            value={values.dayOfPeriod}
-            onChange={(e) =>
-              update("dayOfPeriod", Number(e.target.value) as never)
-            }
+          <NumberInput
+            value={values.dayOfPeriod || undefined}
+            onChange={(v) => update("dayOfPeriod", (v ?? 1) as never)}
+            maxDecimals={0}
           />
         </Field>
         <Field label="Démarre le" hint={errors.startDate}>

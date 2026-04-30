@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Input } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Pill } from "@/components/ui/Pill";
 import { calculateVehicleCurrentValue } from "@/lib/finance";
 import { formatEuro, formatPct } from "@/lib/formatters";
@@ -109,12 +109,9 @@ export function VehicleCard({ vehicle }: Props) {
             {editing ? (
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <div className="w-44">
-                  <Input
-                    mono
-                    type="number"
-                    step="100"
-                    value={draft || ""}
-                    onChange={(e) => setDraft(Number(e.target.value))}
+                  <NumberInput
+                    value={draft || undefined}
+                    onChange={(v) => setDraft(v ?? 0)}
                     autoFocus
                   />
                 </div>

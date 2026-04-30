@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Select } from "@/components/ui/Select";
 import { useWealthStore } from "@/lib/store";
 
@@ -102,14 +103,9 @@ export function AddGoalForm({ onCreated }: Props) {
           </Select>
         </Field>
         <Field label="Montant cible (€)" hint={errors.targetAmount}>
-          <Input
-            mono
-            type="number"
-            step="100"
-            value={values.targetAmount || ""}
-            onChange={(e) =>
-              update("targetAmount", Number(e.target.value) as never)
-            }
+          <NumberInput
+            value={values.targetAmount || undefined}
+            onChange={(v) => update("targetAmount", (v ?? 0) as never)}
             className={errors.targetAmount ? "border-strawberry-600" : undefined}
           />
         </Field>
@@ -126,40 +122,20 @@ export function AddGoalForm({ onCreated }: Props) {
           label="Apport emprunté (€)"
           hint="Montant non épargné, ex: 15000 pour un crédit voiture"
         >
-          <Input
-            mono
-            type="number"
-            step="100"
+          <NumberInput
+            value={values.borrowAmount}
+            onChange={(v) => update("borrowAmount", v as never)}
             placeholder="0"
-            value={values.borrowAmount ?? ""}
-            onChange={(e) =>
-              update(
-                "borrowAmount",
-                e.target.value === ""
-                  ? (undefined as never)
-                  : (Number(e.target.value) as never),
-              )
-            }
           />
         </Field>
         <Field
           label="Override épargne mensuelle (€)"
           hint="Vide = utilise ton épargne observée des 90 derniers jours"
         >
-          <Input
-            mono
-            type="number"
-            step="50"
+          <NumberInput
+            value={values.monthlyOverride}
+            onChange={(v) => update("monthlyOverride", v as never)}
             placeholder="auto"
-            value={values.monthlyOverride ?? ""}
-            onChange={(e) =>
-              update(
-                "monthlyOverride",
-                e.target.value === ""
-                  ? (undefined as never)
-                  : (Number(e.target.value) as never),
-              )
-            }
           />
         </Field>
         <Field label="Notes (optionnel)">

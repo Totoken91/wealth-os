@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Select } from "@/components/ui/Select";
 import { useWealthStore } from "@/lib/store";
 import type { TransactionType } from "@/types";
@@ -177,14 +178,9 @@ export function AddTransactionForm({ holdingId, onCreated }: Props = {}) {
           </div>
         </Field>
         <Field label="Quantité" hint={errors.quantity}>
-          <Input
-            mono
-            type="number"
-            step="0.00000001"
-            value={values.quantity || ""}
-            onChange={(e) =>
-              update("quantity", Number(e.target.value) as never)
-            }
+          <NumberInput
+            value={values.quantity || undefined}
+            onChange={(v) => update("quantity", (v ?? 0) as never)}
             className={errors.quantity ? "border-strawberry-600" : undefined}
           />
         </Field>
@@ -192,24 +188,16 @@ export function AddTransactionForm({ holdingId, onCreated }: Props = {}) {
           label={`Prix unitaire (${selectedHolding?.currency ?? "EUR"})`}
           hint={errors.pricePerUnit}
         >
-          <Input
-            mono
-            type="number"
-            step="0.0001"
-            value={values.pricePerUnit || ""}
-            onChange={(e) =>
-              update("pricePerUnit", Number(e.target.value) as never)
-            }
+          <NumberInput
+            value={values.pricePerUnit || undefined}
+            onChange={(v) => update("pricePerUnit", (v ?? 0) as never)}
             className={errors.pricePerUnit ? "border-strawberry-600" : undefined}
           />
         </Field>
         <Field label="Frais (€)" hint={errors.fees}>
-          <Input
-            mono
-            type="number"
-            step="0.01"
-            value={values.fees || ""}
-            onChange={(e) => update("fees", Number(e.target.value) as never)}
+          <NumberInput
+            value={values.fees || undefined}
+            onChange={(v) => update("fees", (v ?? 0) as never)}
             className={errors.fees ? "border-strawberry-600" : undefined}
           />
         </Field>
@@ -223,19 +211,9 @@ export function AddTransactionForm({ holdingId, onCreated }: Props = {}) {
                 : "EUR par 1 USD à la date d'achat (requis)")
             }
           >
-            <Input
-              mono
-              type="number"
-              step="0.0001"
-              value={values.exchangeRate ?? ""}
-              onChange={(e) =>
-                update(
-                  "exchangeRate",
-                  e.target.value === ""
-                    ? (undefined as never)
-                    : (Number(e.target.value) as never),
-                )
-              }
+            <NumberInput
+              value={values.exchangeRate}
+              onChange={(v) => update("exchangeRate", v as never)}
               className={
                 errors.exchangeRate ? "border-strawberry-600" : undefined
               }

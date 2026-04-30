@@ -7,6 +7,7 @@ import { TickerAutocomplete } from "@/components/forms/TickerAutocomplete";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Select } from "@/components/ui/Select";
 import {
   fetchCryptoPricesEUR,
@@ -184,14 +185,9 @@ export function AddHoldingForm({ onCreated }: AddHoldingFormProps) {
           label="Prix actuel (par unité)"
           hint={errors.currentPrice ?? "Dans la devise du holding"}
         >
-          <Input
-            mono
-            type="number"
-            step="0.0001"
-            value={values.currentPrice || ""}
-            onChange={(e) =>
-              update("currentPrice", Number(e.target.value) as never)
-            }
+          <NumberInput
+            value={values.currentPrice || undefined}
+            onChange={(v) => update("currentPrice", (v ?? 0) as never)}
             className={errors.currentPrice ? "border-strawberry-600" : undefined}
           />
         </Field>
