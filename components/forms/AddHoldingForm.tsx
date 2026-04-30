@@ -3,10 +3,16 @@
 import { useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
+import { TickerAutocomplete } from "@/components/forms/TickerAutocomplete";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import {
+  fetchCryptoPricesEUR,
+  fetchYahooPrice,
+  type AssetSearchResult,
+} from "@/lib/price-fetcher";
 import { useWealthStore } from "@/lib/store";
 import type { HoldingType } from "@/types";
 
@@ -44,9 +50,47 @@ export function AddHoldingForm({ onCreated }: AddHoldingFormProps) {
   const [errors, setErrors] = useState<Partial<Record<keyof FormValues, string>>>(
     {},
   );
+  const [resolving, setResolving] = useState(false);
 
   const update = <K extends keyof FormValues>(key: K, v: FormValues[K]) =>
     setValues((s) => ({ ...s, [key]: v }));
+
+  const handleAutocompleteSelect = async (asset: AssetSearchResult) => {
+    setValues((s) => ({
+      ...s,
+      type: asset.type,
+      ticker: asset.ticker,
+      name: asset.name,
+      currency: asset.currency,
+      coingeckoId: asset.coingeckoId ?? "",
+      yahooSymbol: asset.yahooSymbol ?? "",
+    }));
+    setErrors({});
+    // Try to fetch the current price right away
+    setResolving(true);
+    try {
+      if (asset.coingeckoId) {
+        const map = await fetchCryptoPricesEUR([asset.coingeckoId]);
+        const price = map[asset.coingeckoId];
+        if (typeof price === "number") {
+          setValues((s) => ({ ...s, currency: "EUR", currentPrice: price }));
+        }
+      } else if (asset.yahooSymbol) {
+        const quote = await fetchYahooPrice(asset.yahooSymbol);
+        if (quote) {
+          setValues((s) => ({
+            ...s,
+            currency: quote.currency,
+            currentPrice: quote.price,
+          }));
+        }
+      }
+    } catch {
+      // Silent — user can still type the price manually
+    } finally {
+      setResolving(false);
+    }
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,6 +125,18 @@ export function AddHoldingForm({ onCreated }: AddHoldingFormProps) {
 
   return (
     <Card header="Nouvelle position">
+      <div className="mb-4">
+        <Field
+          label="Recherche (auto-remplit type, devise et prix)"
+          hint={
+            resolving
+              ? "Récupération du prix actuel…"
+              : "Ex: bitcoin, S&P 500, AAPL, vanguard… 2+ caractères"
+          }
+        >
+          <TickerAutocomplete onSelect={handleAutocompleteSelect} />
+        </Field>
+      </div>
       <form
         onSubmit={submit}
         className="grid grid-cols-1 sm:grid-cols-3 gap-3"
