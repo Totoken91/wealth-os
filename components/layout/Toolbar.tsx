@@ -24,6 +24,7 @@ const TABS: TabDef[] = [
   { label: "Dashboard", href: "/dashboard", flavor: "blueberry" },
   { label: "DCA", href: "/dca", flavor: "tangerine" },
   { label: "Positions", href: "/positions", flavor: "lime" },
+  { label: "Comptes", href: "/accounts", flavor: "grape" },
   { label: "Véhicules", href: "/vehicles", flavor: "strawberry" },
   { label: "Historique", href: "/history", flavor: "grape" },
   { label: "Projection", href: "/projection", flavor: "blueberry" },

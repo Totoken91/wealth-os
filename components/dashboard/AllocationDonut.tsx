@@ -18,6 +18,7 @@ export function AllocationDonut() {
   const holdings = useWealthStore((s) => s.holdings);
   const transactions = useWealthStore((s) => s.transactions);
   const vehicles = useWealthStore((s) => s.vehicles);
+  const accounts = useWealthStore((s) => s.accounts);
   const snapshots = useWealthStore((s) => s.snapshots);
   const goals = useWealthStore((s) => s.goals);
   const dcaRules = useWealthStore((s) => s.dcaRules);
@@ -28,6 +29,7 @@ export function AllocationDonut() {
       holdings,
       transactions,
       vehicles,
+      accounts: accounts ?? [],
       snapshots,
       goals,
       dcaRules,
@@ -37,10 +39,11 @@ export function AllocationDonut() {
       { key: "etf", label: "ETF", value: breakdown.etf, color: "#3a8acc", textColor: "#0a3a6a" },
       { key: "stock", label: "Stocks", value: breakdown.stock, color: "#80c020", textColor: "#2a4a08" },
       { key: "crypto", label: "Crypto", value: breakdown.crypto, color: "#9858c8", textColor: "#4a0a6a" },
-      { key: "cash", label: "Cash", value: breakdown.cash, color: "#e84858", textColor: "#5a0a18" },
+      { key: "cash", label: "Cash & livrets", value: breakdown.cash, color: "#e84858", textColor: "#5a0a18" },
       { key: "vehicles", label: "Véhicules", value: breakdown.vehicles, color: "#f06820", textColor: "#6a2a0a" },
+      { key: "receivables", label: "Créances", value: breakdown.receivables, color: "#9858c8", textColor: "#4a0a6a" },
     ].filter((s) => s.value > 0);
-  }, [holdings, transactions, vehicles, snapshots, goals, dcaRules, settings]);
+  }, [holdings, transactions, vehicles, accounts, snapshots, goals, dcaRules, settings]);
 
   const total = segments.reduce((s, x) => s + x.value, 0);
 

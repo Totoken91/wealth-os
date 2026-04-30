@@ -32,6 +32,7 @@ const SECTIONS: NavSection[] = [
       { label: "Dashboard", href: "/dashboard", icon: "blue" },
       { label: "Saisie DCA", href: "/dca", icon: "orange" },
       { label: "Positions", href: "/positions", icon: "green" },
+      { label: "Comptes", href: "/accounts", icon: "purple" },
       { label: "Véhicules", href: "/vehicles", icon: "pink" },
     ],
   },

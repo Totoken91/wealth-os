@@ -37,6 +37,7 @@ export function LoanOptimizerPanel({ goal, onClose }: Props) {
   const holdings = useWealthStore((s) => s.holdings);
   const transactions = useWealthStore((s) => s.transactions);
   const vehicles = useWealthStore((s) => s.vehicles);
+  const accounts = useWealthStore((s) => s.accounts);
   const snapshots = useWealthStore((s) => s.snapshots);
   const goals = useWealthStore((s) => s.goals);
   const dcaRules = useWealthStore((s) => s.dcaRules);
@@ -47,12 +48,22 @@ export function LoanOptimizerPanel({ goal, onClose }: Props) {
       holdings,
       transactions,
       vehicles,
+      accounts: accounts ?? [],
       snapshots,
       goals,
       dcaRules,
       settings,
     }),
-    [holdings, transactions, vehicles, snapshots, goals, dcaRules, settings],
+    [
+      holdings,
+      transactions,
+      vehicles,
+      accounts,
+      snapshots,
+      goals,
+      dcaRules,
+      settings,
+    ],
   );
 
   const breakdown = useMemo(() => calculateBreakdown(state), [state]);

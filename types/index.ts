@@ -3,6 +3,27 @@ export type VehicleType = "car" | "motorcycle" | "other";
 export type TransactionType = "buy" | "sell";
 export type Currency = "EUR" | "USD";
 
+/**
+ * Liquid balances and counterparty positions.
+ * - checking / savings : positive contribution to net worth (cash you hold)
+ * - debt              : you owe this money (subtracts from net worth)
+ * - receivable        : someone owes you this money (adds to net worth)
+ *
+ * Stored balance is always >= 0; the sign comes from the type.
+ */
+export type AccountType = "checking" | "savings" | "debt" | "receivable";
+
+export interface Account {
+  id: string;
+  type: AccountType;
+  name: string;
+  /** Always positive in storage; sign is implied by `type`. */
+  balance: number;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Holding {
   id: string;
   type: HoldingType;
@@ -48,8 +69,13 @@ export interface SnapshotBreakdown {
   etf: number;
   crypto: number;
   stock: number;
+  /** Cash holdings + checking + savings. */
   cash: number;
   vehicles: number;
+  /** Outstanding debts (positive number; subtracts from net worth). */
+  debts: number;
+  /** Receivables — money owed to you (positive contribution). */
+  receivables: number;
 }
 
 export interface Snapshot {
@@ -112,6 +138,7 @@ export interface AppState {
   holdings: Holding[];
   transactions: Transaction[];
   vehicles: Vehicle[];
+  accounts: Account[];
   snapshots: Snapshot[];
   goals: Goal[];
   dcaRules: DcaRule[];

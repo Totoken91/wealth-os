@@ -235,6 +235,8 @@ export function calculateBreakdown(state: AppState): SnapshotBreakdown {
     stock: 0,
     cash: 0,
     vehicles: 0,
+    debts: 0,
+    receivables: 0,
   };
   const txByHolding = transactionsByHolding(state.transactions);
   const rate = state.settings.currentEurUsdRate;
@@ -247,6 +249,16 @@ export function calculateBreakdown(state: AppState): SnapshotBreakdown {
   for (const vehicle of state.vehicles) {
     result.vehicles += calculateVehicleCurrentValue(vehicle);
   }
+  for (const account of state.accounts ?? []) {
+    const balance = Math.max(0, account.balance);
+    if (account.type === "checking" || account.type === "savings") {
+      result.cash += balance;
+    } else if (account.type === "debt") {
+      result.debts += balance;
+    } else if (account.type === "receivable") {
+      result.receivables += balance;
+    }
+  }
   return result;
 }
 
@@ -256,7 +268,15 @@ function bucketKey(type: HoldingType): keyof SnapshotBreakdown {
 
 export function calculateTotalNet(state: AppState): number {
   const b = calculateBreakdown(state);
-  return b.etf + b.crypto + b.stock + b.cash + b.vehicles;
+  return (
+    b.etf +
+    b.crypto +
+    b.stock +
+    b.cash +
+    b.vehicles +
+    b.receivables -
+    b.debts
+  );
 }
 
 export function calculateTotalCapitalInvested(state: AppState): number {
@@ -347,7 +367,14 @@ export function createSnapshot(state: AppState, id?: string): Snapshot {
   return {
     id: id ?? `snap-${Date.now()}`,
     date: new Date().toISOString(),
-    totalNet: breakdown.etf + breakdown.crypto + breakdown.stock + breakdown.cash + breakdown.vehicles,
+    totalNet:
+      breakdown.etf +
+      breakdown.crypto +
+      breakdown.stock +
+      breakdown.cash +
+      breakdown.vehicles +
+      breakdown.receivables -
+      breakdown.debts,
     breakdown,
     capitalInvested: calculateTotalCapitalInvested(state),
   };

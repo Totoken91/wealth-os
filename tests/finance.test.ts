@@ -307,6 +307,7 @@ function emptyState(): AppState {
     holdings: [],
     transactions: [],
     vehicles: [],
+    accounts: [],
     snapshots: [],
     goals: [],
     dcaRules: [],
@@ -323,6 +324,8 @@ describe("calculateBreakdown / TotalNet / Snapshot", () => {
       stock: 0,
       cash: 0,
       vehicles: 0,
+      debts: 0,
+      receivables: 0,
     });
     expect(calculateTotalNet(state)).toBe(0);
   });
@@ -370,6 +373,8 @@ describe("calculateBreakdown / TotalNet / Snapshot", () => {
       stock: 0,
       cash: 0,
       vehicles: 0,
+      debts: 0,
+      receivables: 0,
     });
   });
 
@@ -407,7 +412,7 @@ describe("shouldCreateSnapshot", () => {
       id: "s",
       date: today.toISOString(),
       totalNet: 0,
-      breakdown: { etf: 0, crypto: 0, stock: 0, cash: 0, vehicles: 0 },
+      breakdown: { etf: 0, crypto: 0, stock: 0, cash: 0, vehicles: 0, debts: 0, receivables: 0 },
       capitalInvested: 0,
     };
     const state: AppState = { ...emptyState(), snapshots: [snap] };
@@ -478,7 +483,7 @@ function makeSnapshot(over: Partial<Snapshot> = {}): Snapshot {
     id: `s-${Math.random()}`,
     date: "2026-01-01T00:00:00Z",
     totalNet: 0,
-    breakdown: { etf: 0, crypto: 0, stock: 0, cash: 0, vehicles: 0 },
+    breakdown: { etf: 0, crypto: 0, stock: 0, cash: 0, vehicles: 0, debts: 0, receivables: 0 },
     capitalInvested: 0,
     ...over,
   };

@@ -6,6 +6,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import { DEFAULT_SETTINGS, STORAGE_KEY } from "@/lib/constants";
 import { createSnapshot, shouldCreateSnapshot } from "@/lib/finance";
 import type {
+  Account,
   AppState,
   DcaRule,
   Goal,
@@ -20,6 +21,7 @@ type TransactionInput = Omit<Transaction, "id">;
 type VehicleInput = Omit<Vehicle, "id">;
 type GoalInput = Omit<Goal, "id" | "createdAt">;
 type DcaRuleInput = Omit<DcaRule, "id" | "createdAt">;
+type AccountInput = Omit<Account, "id" | "createdAt" | "updatedAt">;
 
 interface Actions {
   // Holdings
@@ -36,6 +38,11 @@ interface Actions {
   addVehicle: (input: VehicleInput) => string;
   updateVehicle: (id: string, patch: Partial<Vehicle>) => void;
   deleteVehicle: (id: string) => void;
+
+  // Accounts (cash, debts, receivables)
+  addAccount: (input: AccountInput) => string;
+  updateAccount: (id: string, patch: Partial<Account>) => void;
+  deleteAccount: (id: string) => void;
 
   // Goals
   addGoal: (input: GoalInput) => string;
@@ -66,6 +73,7 @@ const initialState: AppState = {
   holdings: [],
   transactions: [],
   vehicles: [],
+  accounts: [],
   snapshots: [],
   goals: [],
   dcaRules: [],
@@ -167,6 +175,40 @@ export const useWealthStore = create<Store>()(
           }),
         ),
 
+      /* ---------------- Accounts ---------------- */
+      addAccount: (input) => {
+        const id = `a-${nanoid(8)}`;
+        const now = new Date().toISOString();
+        const account: Account = {
+          ...input,
+          id,
+          createdAt: now,
+          updatedAt: now,
+        };
+        set((s) =>
+          maybeSnapshot({ ...s, accounts: [...s.accounts, account] }),
+        );
+        return id;
+      },
+      updateAccount: (id, patch) =>
+        set((s) =>
+          maybeSnapshot({
+            ...s,
+            accounts: s.accounts.map((a) =>
+              a.id === id
+                ? { ...a, ...patch, updatedAt: new Date().toISOString() }
+                : a,
+            ),
+          }),
+        ),
+      deleteAccount: (id) =>
+        set((s) =>
+          maybeSnapshot({
+            ...s,
+            accounts: s.accounts.filter((a) => a.id !== id),
+          }),
+        ),
+
       /* ---------------- Goals ---------------- */
       addGoal: (input) => {
         const id = `g-${nanoid(8)}`;
@@ -232,6 +274,7 @@ export const useWealthStore = create<Store>()(
           holdings: data.holdings ?? [],
           transactions: data.transactions ?? [],
           vehicles: data.vehicles ?? [],
+          accounts: data.accounts ?? [],
           snapshots: data.snapshots ?? [],
           goals: data.goals ?? [],
           dcaRules: data.dcaRules ?? [],
@@ -244,6 +287,7 @@ export const useWealthStore = create<Store>()(
           holdings: s.holdings,
           transactions: s.transactions,
           vehicles: s.vehicles,
+          accounts: s.accounts,
           snapshots: s.snapshots,
           goals: s.goals,
           dcaRules: s.dcaRules,
@@ -261,6 +305,7 @@ export const useWealthStore = create<Store>()(
         holdings: state.holdings,
         transactions: state.transactions,
         vehicles: state.vehicles,
+        accounts: state.accounts,
         snapshots: state.snapshots,
         goals: state.goals,
         dcaRules: state.dcaRules,

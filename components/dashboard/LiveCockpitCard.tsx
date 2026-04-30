@@ -77,6 +77,7 @@ export function LiveCockpitCard() {
   const holdings = useWealthStore((s) => s.holdings);
   const transactions = useWealthStore((s) => s.transactions);
   const vehicles = useWealthStore((s) => s.vehicles);
+  const accounts = useWealthStore((s) => s.accounts);
   const snapshots = useWealthStore((s) => s.snapshots);
   const goals = useWealthStore((s) => s.goals);
   const dcaRules = useWealthStore((s) => s.dcaRules);
@@ -87,6 +88,7 @@ export function LiveCockpitCard() {
       holdings,
       transactions,
       vehicles,
+      accounts: accounts ?? [],
       snapshots,
       goals,
       dcaRules,
@@ -106,6 +108,7 @@ export function LiveCockpitCard() {
     holdings,
     transactions,
     vehicles,
+    accounts,
     snapshots,
     goals,
     dcaRules,

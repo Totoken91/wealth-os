@@ -45,6 +45,23 @@ const vehicleSchema = z.object({
   annualDepreciation: z.number(),
 });
 
+const accountTypeSchema = z.enum([
+  "checking",
+  "savings",
+  "debt",
+  "receivable",
+]);
+
+const accountSchema = z.object({
+  id: z.string(),
+  type: accountTypeSchema,
+  name: z.string(),
+  balance: z.number(),
+  notes: z.string().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
 const snapshotSchema = z.object({
   id: z.string(),
   date: z.string(),
@@ -55,6 +72,8 @@ const snapshotSchema = z.object({
     stock: z.number(),
     cash: z.number(),
     vehicles: z.number(),
+    debts: z.number().optional().default(0),
+    receivables: z.number().optional().default(0),
   }),
   capitalInvested: z.number(),
 });
@@ -101,6 +120,7 @@ export const appStateSchema = z.object({
   holdings: z.array(holdingSchema),
   transactions: z.array(transactionSchema),
   vehicles: z.array(vehicleSchema),
+  accounts: z.array(accountSchema).optional().default([]),
   snapshots: z.array(snapshotSchema),
   goals: z.array(goalSchema),
   dcaRules: z.array(dcaRuleSchema).optional().default([]),
