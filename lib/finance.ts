@@ -770,8 +770,236 @@ export function optimizeFinancing(input: OptimizeInput): FinancingOptimization {
 }
 
 /* ------------------------------------------------------------------ */
+/* Smart goal assessment (combines plan + financing + trajectory)      */
+/* ------------------------------------------------------------------ */
+
+export type GoalSmartStatus =
+  | "optimal-now"          // can execute optimal financing without compromising trajectory
+  | "feasible-tight"       // can execute but eats into reserve / strains
+  | "loan-strategic"       // strategy = borrow heavily (return > rate) — keep capital working
+  | "wait"                 // not yet feasible at current pace; needs time
+  | "out-of-reach";        // even max loan doesn't fit budget
+
+export interface GoalAssessment {
+  /** Existing PMT-based plan (kept for backwards compatibility). */
+  plan: GoalPlan;
+  /** True when the goal is interpreted as a one-shot purchase (borrowAmount > 0). */
+  isPurchase: boolean;
+
+  /* Wealth slicing */
+  liquidWealth: number;            // accounts (cash + savings) + receivables
+  investableWealth: number;        // liquid + ETF + crypto + stocks
+  totalWealth: number;             // investable + vehicles - debts
+  reservedFloor: number;           // recommended emergency-fund (3 months observed × 12)
+  availableForDownPayment: number; // max(0, liquid + investable_sellable - reserved)
+
+  /* Financing optimization (only computed for purchase goals) */
+  optimization?: FinancingOptimization;
+  creditRate: number;
+  maxMonthlyPayment: number;
+  horizonYears: number;
+
+  /* Trajectory comparisons (purchase goals only) */
+  /** Final wealth at horizon if you skip the purchase entirely. */
+  wealthIfSkip: number;
+  /** Final wealth at horizon if you buy with the optimal mix. */
+  wealthIfBuyOptimal: number;
+  /** Final wealth at horizon if you pay everything cash. */
+  wealthIfBuyCash: number;
+  /** Future wealth lost by buying with the optimal mix vs skipping (positive = costs you). */
+  opportunityCostOptimal: number;
+  /** Extra wealth gained by financing optimally vs paying cash (positive = leverage helps). */
+  loanAdvantageVsCash: number;
+
+  /* Rich status */
+  smartStatus: GoalSmartStatus;
+  smartHeadline: string;
+  smartDetail: string;
+}
+
+interface AssessGoalOptions {
+  /** Annual credit rate the user expects on a consumer loan, default 0.05. */
+  creditRate?: number;
+  /** Hard cap on the monthly payment they're willing to commit, default = 50% of observed savings (or 800 €). */
+  maxMonthlyPayment?: number;
+  /** Months of observed savings to keep as untouched emergency fund, default 3. */
+  emergencyFundMonths?: number;
+  /** Long-term horizon in years for the trajectory comparison, default 10. */
+  horizonYears?: number;
+  /** Maximum loan duration in months, default 84. */
+  maxLoanMonths?: number;
+}
+
+export function assessGoal(
+  goal: Goal,
+  state: AppState,
+  opts: AssessGoalOptions = {},
+): GoalAssessment {
+  const plan = planForGoal(goal, state);
+  const breakdown = calculateBreakdown(state);
+  const annualReturn = state.settings.defaultAnnualReturn;
+  const observedMonthly = calculateObservedMonthlySavings(state) ?? 0;
+
+  // Defaults
+  const creditRate = opts.creditRate ?? 0.05;
+  const emergencyFundMonths = opts.emergencyFundMonths ?? 3;
+  const horizonYears = opts.horizonYears ?? 10;
+  const maxLoanMonths = opts.maxLoanMonths ?? 84;
+  const maxMonthlyPayment =
+    opts.maxMonthlyPayment ?? Math.max(observedMonthly * 0.5, 800);
+
+  // Wealth slicing
+  const liquidWealth =
+    breakdown.cash + breakdown.receivables; // accounts already reflect checking + savings
+  const investableWealth =
+    liquidWealth + breakdown.etf + breakdown.crypto + breakdown.stock;
+  const totalWealth =
+    investableWealth + breakdown.vehicles - breakdown.debts;
+  const reservedFloor = Math.max(0, observedMonthly * emergencyFundMonths);
+  const availableForDownPayment = Math.max(
+    0,
+    investableWealth - reservedFloor,
+  );
+
+  const isPurchase = (goal.borrowAmount ?? 0) > 0;
+
+  if (!isPurchase) {
+    // Savings goal — keep the existing plan-driven semantics, but enrich the
+    // headline so the user knows what's measured.
+    let smartStatus: GoalSmartStatus = "wait";
+    let headline = "À épargner";
+    if (plan.status === "reached") {
+      smartStatus = "optimal-now";
+      headline = "✓ Cible atteinte";
+    } else if (plan.status === "ahead") {
+      smartStatus = "optimal-now";
+      headline = "En avance — bon rythme";
+    } else if (plan.status === "on-track") {
+      smartStatus = "loan-strategic";
+      headline = "Sur la trajectoire";
+    } else if (plan.status === "behind") {
+      smartStatus = "wait";
+      headline = "En retard — augmenter l'effort";
+    } else if (plan.status === "unreachable") {
+      smartStatus = "out-of-reach";
+      headline = "Cible inatteignable au rythme actuel";
+    }
+    return {
+      plan,
+      isPurchase: false,
+      liquidWealth,
+      investableWealth,
+      totalWealth,
+      reservedFloor,
+      availableForDownPayment,
+      creditRate,
+      maxMonthlyPayment,
+      horizonYears,
+      wealthIfSkip: 0,
+      wealthIfBuyOptimal: 0,
+      wealthIfBuyCash: 0,
+      opportunityCostOptimal: 0,
+      loanAdvantageVsCash: 0,
+      smartStatus,
+      smartHeadline: headline,
+      smartDetail:
+        plan.status === "reached"
+          ? `Tu as ${formatPlainEuro(plan.currentAmount)} sur ${formatPlainEuro(plan.effectiveTarget)} requis.`
+          : `Manque ${formatPlainEuro(plan.remaining)}.`,
+    };
+  }
+
+  // Purchase goal — run the optimizer
+  const optimization = optimizeFinancing({
+    targetAmount: goal.targetAmount,
+    currentWealth: investableWealth,
+    reservedWealth: reservedFloor,
+    monthlySavings: observedMonthly,
+    maxMonthlyPayment,
+    maxLoanMonths,
+    creditRate,
+    expectedReturn: annualReturn,
+    horizonYears,
+  });
+
+  // Counterfactual: what if you skip the purchase entirely?
+  const horizonMonths = horizonYears * 12;
+  const r = annualReturn / 12;
+  let skipWealth = investableWealth;
+  for (let m = 1; m <= horizonMonths; m += 1) {
+    skipWealth = skipWealth * (1 + r) + observedMonthly;
+  }
+
+  const wealthIfBuyOptimal = optimization.scenarios.optimal.finalWealth;
+  const wealthIfBuyCash = optimization.scenarios.cashOnly.finalWealth;
+  const opportunityCostOptimal = skipWealth - wealthIfBuyOptimal;
+  const loanAdvantageVsCash = wealthIfBuyOptimal - wealthIfBuyCash;
+
+  // Determine smart status
+  let smartStatus: GoalSmartStatus;
+  let smartHeadline: string;
+  let smartDetail: string;
+
+  const optimal = optimization.scenarios.optimal;
+
+  if (!optimization.feasible) {
+    smartStatus = "out-of-reach";
+    smartHeadline = "Pas faisable maintenant";
+    smartDetail =
+      optimization.reason ??
+      "Même avec le crédit maximum, le mix ne tient pas dans tes contraintes (mensualité ou réserve).";
+  } else if (
+    optimal.loanAmount === 0 &&
+    optimal.downPayment > availableForDownPayment * 0.95
+  ) {
+    smartStatus = "feasible-tight";
+    smartHeadline = "Faisable, mais tendu";
+    smartDetail = `Le mix optimal vide quasiment ta réserve liquide. Tu finis à ${formatPlainEuro(wealthIfBuyOptimal)} à ${horizonYears} ans (vs ${formatPlainEuro(skipWealth)} si tu n'achètes pas).`;
+  } else if (loanAdvantageVsCash > 500) {
+    smartStatus = "loan-strategic";
+    smartHeadline = "Stratégie : emprunte, garde tes investissements";
+    smartDetail = `Avec ${(annualReturn * 100).toFixed(1)}% de rendement attendu et ${(creditRate * 100).toFixed(1)}% de crédit, le mix optimal te fait gagner ${formatPlainEuro(loanAdvantageVsCash)} de patrimoine à ${horizonYears} ans vs payer cash.`;
+  } else if (opportunityCostOptimal < skipWealth * 0.05) {
+    smartStatus = "optimal-now";
+    smartHeadline = "Tu peux y aller — coût trajectoire faible";
+    smartDetail = `L'achat te coûte ${formatPlainEuro(opportunityCostOptimal)} de patrimoine futur sur ${horizonYears} ans (${((opportunityCostOptimal / skipWealth) * 100).toFixed(1)}%). Acceptable.`;
+  } else {
+    smartStatus = "feasible-tight";
+    smartHeadline = "Faisable, mais coût significatif";
+    smartDetail = `Acheter maintenant te ferait perdre ${formatPlainEuro(opportunityCostOptimal)} (${((opportunityCostOptimal / skipWealth) * 100).toFixed(1)}%) de patrimoine projeté à ${horizonYears} ans.`;
+  }
+
+  return {
+    plan,
+    isPurchase: true,
+    liquidWealth,
+    investableWealth,
+    totalWealth,
+    reservedFloor,
+    availableForDownPayment,
+    optimization,
+    creditRate,
+    maxMonthlyPayment,
+    horizonYears,
+    wealthIfSkip: skipWealth,
+    wealthIfBuyOptimal,
+    wealthIfBuyCash,
+    opportunityCostOptimal,
+    loanAdvantageVsCash,
+    smartStatus,
+    smartHeadline,
+    smartDetail,
+  };
+}
+
+function formatPlainEuro(v: number): string {
+  return `${Math.round(v).toLocaleString("fr-FR")} €`;
+}
+
+/* ------------------------------------------------------------------ */
 /* DCA rules — pending drafts                                          */
-/* ------------------------------------------------------------------ */export interface DcaDraft {
+/* ------------------------------------------------------------------ */
+export interface DcaDraft {
   ruleId: string;
   occurrenceDate: string; // YYYY-MM-DD
   holdingId: string;

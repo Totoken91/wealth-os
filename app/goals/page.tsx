@@ -6,8 +6,8 @@ import { GoalCard } from "@/components/goals/GoalCard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import {
+  assessGoal,
   calculateObservedMonthlySavings,
-  planForGoal,
 } from "@/lib/finance";
 import { formatEuro } from "@/lib/formatters";
 import { useWealthStore } from "@/lib/store";
@@ -115,7 +115,7 @@ export default function GoalsPage() {
             </Card>
           ) : (
             sorted.map((g) => (
-              <GoalCard key={g.id} goal={g} plan={planForGoal(g, state)} />
+              <GoalCard key={g.id} goal={g} assessment={assessGoal(g, state)} />
             ))
           )}
         </>
