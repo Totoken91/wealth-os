@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AddTransactionForm } from "@/components/forms/AddTransactionForm";
+import { OpeningBalanceForm } from "@/components/forms/OpeningBalanceForm";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Input";
@@ -49,6 +50,7 @@ export function PositionDetail({ id }: Props) {
   );
 
   const [showAddTx, setShowAddTx] = useState(false);
+  const [showOpening, setShowOpening] = useState(false);
   const [showEditPosition, setShowEditPosition] = useState(false);
 
   if (!hydrated) {
@@ -127,6 +129,11 @@ export function PositionDetail({ id }: Props) {
             + Saisir une transaction
           </Button>
         )}
+        {!showOpening && (
+          <Button variant="tangerine" onClick={() => setShowOpening(true)}>
+            ⚡ Solde d&apos;ouverture
+          </Button>
+        )}
         {!showEditPosition && (
           <Button
             variant="grape"
@@ -156,6 +163,14 @@ export function PositionDetail({ id }: Props) {
             </button>
           </div>
         </div>
+      )}
+
+      {showOpening && (
+        <OpeningBalanceForm
+          holdingId={holding.id}
+          onCreated={() => setShowOpening(false)}
+          onCancel={() => setShowOpening(false)}
+        />
       )}
 
       {showEditPosition && (

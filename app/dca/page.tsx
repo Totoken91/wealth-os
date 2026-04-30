@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AddDcaRuleForm } from "@/components/forms/AddDcaRuleForm";
 import { AddHoldingForm } from "@/components/forms/AddHoldingForm";
 import { AddTransactionForm } from "@/components/forms/AddTransactionForm";
+import { OpeningBalanceForm } from "@/components/forms/OpeningBalanceForm";
 import { DcaDraftsPanel } from "@/components/dca/DcaDraftsPanel";
 import { DcaRulesList } from "@/components/dca/DcaRulesList";
 import { DcaStatsPanel } from "@/components/dca/DcaStatsPanel";
@@ -20,6 +21,7 @@ export default function DcaPage() {
   const [showRuleForm, setShowRuleForm] = useState(false);
   const [showHoldingForm, setShowHoldingForm] = useState(false);
   const [showManualTx, setShowManualTx] = useState(false);
+  const [showOpening, setShowOpening] = useState(false);
 
   return (
     <div className="text-blueberry-900">
@@ -75,6 +77,14 @@ export default function DcaPage() {
                     + Saisie ponctuelle (hors règle)
                   </Button>
                 )}
+                {!showOpening && (
+                  <Button
+                    variant="blueberry"
+                    onClick={() => setShowOpening(true)}
+                  >
+                    ⚡ Solde d&apos;ouverture (migration)
+                  </Button>
+                )}
               </div>
             )}
 
@@ -84,10 +94,20 @@ export default function DcaPage() {
             {showHoldingForm && (
               <AddHoldingForm onCreated={() => setShowHoldingForm(false)} />
             )}
+            {showOpening && holdings.length > 0 && (
+              <OpeningBalanceForm
+                onCreated={() => setShowOpening(false)}
+                onCancel={() => setShowOpening(false)}
+              />
+            )}
             {(showManualTx || holdings.length === 0) && (
               <>
                 {holdings.length === 0 && <AddHoldingForm />}
-                {holdings.length > 0 && showManualTx && <AddTransactionForm />}
+                {holdings.length > 0 && showManualTx && (
+                  <AddTransactionForm
+                    onCreated={() => setShowManualTx(false)}
+                  />
+                )}
               </>
             )}
 
