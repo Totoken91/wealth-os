@@ -38,6 +38,9 @@ export function VehicleCard({ vehicle }: Props) {
   const [draftMileage, setDraftMileage] = useState<number | undefined>(
     vehicle.mileageKm,
   );
+  const [draftPurchasePrice, setDraftPurchasePrice] = useState<number>(
+    vehicle.purchasePrice,
+  );
 
   const Icon = ICONS[vehicle.type];
 
@@ -58,10 +61,15 @@ export function VehicleCard({ vehicle }: Props) {
       toast.error("Valeur invalide");
       return;
     }
+    if (draftPurchasePrice <= 0) {
+      toast.error("Prix d'achat invalide");
+      return;
+    }
     updateVehicle(vehicle.id, {
       currentValue: draft,
       currentValueUpdatedAt: new Date().toISOString(),
       mileageKm: draftMileage && draftMileage > 0 ? draftMileage : undefined,
+      purchasePrice: draftPurchasePrice,
     });
     setEditing(false);
     toast.success("Valeur mise à jour", {
@@ -136,6 +144,18 @@ export function VehicleCard({ vehicle }: Props) {
                     />
                   </div>
                 </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/65 w-20">
+                    Acheté €
+                  </span>
+                  <div className="w-44">
+                    <NumberInput
+                      value={draftPurchasePrice || undefined}
+                      placeholder="prix réel payé"
+                      onChange={(v) => setDraftPurchasePrice(v ?? 0)}
+                    />
+                  </div>
+                </div>
                 <div className="flex gap-2 pt-1">
                   <Button variant="lime" onClick={saveValue}>
                     Enregistrer
@@ -146,6 +166,7 @@ export function VehicleCard({ vehicle }: Props) {
                       setEditing(false);
                       setDraft(vehicle.currentValue);
                       setDraftMileage(vehicle.mileageKm);
+                      setDraftPurchasePrice(vehicle.purchasePrice);
                     }}
                   >
                     Annuler

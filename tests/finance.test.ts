@@ -397,8 +397,10 @@ describe("calculateBreakdown / TotalNet / Snapshot", () => {
         },
       ],
     };
-    // ETF: 10 * 20 = 200 capital + vehicle purchase 30000
-    expect(calculateTotalCapitalInvested(state)).toBeCloseTo(30200, 5);
+    // ETF: 10 * 20 = 200 capital. Vehicles are excluded — their purchase
+    // price is not "investment capital" (it's a consumer good, not a
+    // recoverable injection into the portfolio).
+    expect(calculateTotalCapitalInvested(state)).toBeCloseTo(200, 5);
   });
 });
 

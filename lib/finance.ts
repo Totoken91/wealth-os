@@ -280,17 +280,28 @@ export function calculateTotalNet(state: AppState): number {
 }
 
 export function calculateTotalCapitalInvested(state: AppState): number {
+  // Capital invested = money you injected into financial assets (ETF, stocks,
+  // crypto). Vehicles are excluded — their purchase price is not an
+  // "investment" you can recover, and including it inflates the baseline of
+  // the portfolio chart, making real investment gains look smaller than they
+  // are. Vehicle depreciation appears naturally in the wealth line as it
+  // declines over time.
   const txByHolding = transactionsByHolding(state.transactions);
   let total = 0;
   for (const holding of state.holdings) {
     const txs = txByHolding.get(holding.id) ?? [];
     total += calculateCapitalInvestedEUR(txs);
   }
-  // Vehicles count toward capital invested at purchase price (one-shot).
-  for (const vehicle of state.vehicles) {
-    total += vehicle.purchasePrice;
-  }
   return total;
+}
+
+/**
+ * Total spent on vehicle purchases (sum of purchasePrice). Useful for a
+ * dedicated "vehicles cost vs current value" view, separate from the
+ * portfolio capital-invested.
+ */
+export function calculateVehiclePurchaseTotal(state: AppState): number {
+  return state.vehicles.reduce((sum, v) => sum + v.purchasePrice, 0);
 }
 
 /* ------------------------------------------------------------------ */
