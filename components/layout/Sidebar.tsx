@@ -58,6 +58,7 @@ export function Sidebar() {
   return (
     <aside
       className="
+        hidden md:block
         w-[210px] shrink-0 py-[14px]
         bg-[linear-gradient(180deg,rgba(180,220,250,0.45)_0%,rgba(140,195,235,0.4)_50%,rgba(110,175,220,0.45)_100%)]
         border-r border-[rgba(50,90,140,0.25)]

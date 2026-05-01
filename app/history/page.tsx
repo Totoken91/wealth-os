@@ -252,7 +252,78 @@ export default function HistoryPage() {
                 Aucun snapshot pour l&apos;instant.
               </p>
             ) : (
-              <div className="overflow-x-auto -mx-2">
+              <>
+                {/* Mobile: card list with collapsible breakdown */}
+                <ul className="md:hidden space-y-2">
+                  {sortedSnapshots.map((s) => {
+                    const pnl = s.totalNet - s.capitalInvested;
+                    const tone =
+                      pnl > 0
+                        ? "text-lime-700"
+                        : pnl < 0
+                          ? "text-strawberry-700"
+                          : "text-blueberry-900/60";
+                    return (
+                      <li
+                        key={s.id}
+                        className="rounded-[10px] border border-blueberry-700/15 bg-blueberry-100/15 px-3 py-2.5"
+                      >
+                        <div className="flex items-baseline justify-between gap-2">
+                          <span className="num font-mono tabular-nums text-[11.5px] text-blueberry-900/65">
+                            {s.date.slice(0, 10)}
+                          </span>
+                          <span className="num font-mono tabular-nums text-[14px] font-bold text-blueberry-900 whitespace-nowrap">
+                            {formatEuro(s.totalNet)}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-3 mt-1 text-[11px]">
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-[9.5px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/65">
+                              Capital
+                            </span>
+                            <span className="num font-mono tabular-nums text-blueberry-900">
+                              {formatEuro(s.capitalInvested)}
+                            </span>
+                          </div>
+                          <div className="flex items-baseline gap-1.5">
+                            <span className="text-[9.5px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/65">
+                              P&amp;L
+                            </span>
+                            <span className={cn("num font-mono tabular-nums font-bold", tone)}>
+                              {pnl >= 0 ? "+" : ""}
+                              {formatEuro(pnl)}
+                            </span>
+                          </div>
+                        </div>
+                        <details className="mt-2 group">
+                          <summary className="text-[10.5px] font-bold uppercase tracking-wider text-blueberry-700 cursor-pointer select-none list-none flex items-center gap-1">
+                            <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+                            Détail allocation
+                          </summary>
+                          <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-1.5 text-[11px]">
+                            <BreakdownRow label="ETF" value={s.breakdown.etf} />
+                            <BreakdownRow label="Crypto" value={s.breakdown.crypto} />
+                            <BreakdownRow label="Stocks" value={s.breakdown.stock} />
+                            <BreakdownRow label="Cash" value={s.breakdown.cash} />
+                            <BreakdownRow label="Véhicules" value={s.breakdown.vehicles} />
+                          </div>
+                        </details>
+                        <div className="mt-1.5 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(s.id)}
+                            className="text-[10.5px] font-bold uppercase tracking-wider text-strawberry-700 hover:underline"
+                          >
+                            Suppr
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+
+                {/* Desktop: table */}
+                <div className="hidden md:block overflow-x-auto -mx-2">
                 <table className="w-full text-[12px]">
                   <thead>
                     <tr className="border-b border-blueberry-700/30">
@@ -331,7 +402,8 @@ export default function HistoryPage() {
                     })}
                   </tbody>
                 </table>
-              </div>
+                </div>
+              </>
             )}
           </Card>
         </>
@@ -384,5 +456,30 @@ function Td({
     >
       {children}
     </td>
+  );
+}
+
+function BreakdownRow({ label, value }: { label: string; value: number }) {
+  if (!value) {
+    return (
+      <div className="flex items-baseline gap-1.5">
+        <span className="text-[9.5px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/55">
+          {label}
+        </span>
+        <span className="num font-mono tabular-nums text-blueberry-900/45">
+          —
+        </span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-baseline gap-1.5">
+      <span className="text-[9.5px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/65">
+        {label}
+      </span>
+      <span className="num font-mono tabular-nums text-blueberry-900">
+        {formatEuro(value)}
+      </span>
+    </div>
   );
 }

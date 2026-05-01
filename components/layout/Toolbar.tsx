@@ -36,7 +36,7 @@ export function Toolbar() {
   return (
     <div
       className="
-        h-14 flex items-center gap-[6px] px-[14px]
+        h-14 hidden md:flex items-center gap-[6px] px-[14px]
         bg-[linear-gradient(180deg,rgba(240,245,252,0.95)_0%,rgba(215,225,240,0.95)_100%)]
         border-b border-[rgba(50,90,140,0.2)]
         overflow-x-auto

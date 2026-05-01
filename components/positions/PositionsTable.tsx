@@ -257,7 +257,71 @@ export function PositionsTable() {
       </Card>
 
       <Card header={`Positions (${data.length}) — total ${formatEuro(totalValue)}`}>
-        <div className="overflow-x-auto -mx-2">
+        {/* Mobile: card list */}
+        <ul className="md:hidden space-y-2">
+          {table.getRowModel().rows.map((row) => {
+            const r = row.original;
+            return (
+              <li key={r.id}>
+                <Link
+                  href={`/positions/${r.id}`}
+                  className="block rounded-[10px] border border-blueberry-700/15 bg-blueberry-100/15 px-3 py-2.5 active:bg-blueberry-100/35 transition-colors"
+                >
+                  <div className="flex items-baseline justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-bold text-blueberry-900 text-[14px]">
+                        {r.ticker}
+                      </span>
+                      <Pill flavor={r.type}>{r.type}</Pill>
+                    </div>
+                    <span className="num font-bold text-blueberry-900 text-[14px] whitespace-nowrap">
+                      {formatEuro(r.valueEur)}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-blueberry-900/65 mt-0.5 truncate">
+                    {r.name}
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 mt-2 text-[11px]">
+                    <MiniStat
+                      label="Qté"
+                      value={formatQuantity(
+                        r.quantity,
+                        r.type === "crypto" ? 8 : 4,
+                      )}
+                    />
+                    <MiniStat
+                      label="PRU €"
+                      value={formatEuro(r.pruEur, 4)}
+                    />
+                    <MiniStat
+                      label="Prix €"
+                      value={formatEuro(r.currentPriceEur, 4)}
+                    />
+                    <MiniStat
+                      label="P&L"
+                      value={`${r.pnlEur >= 0 ? "+" : ""}${formatEuro(r.pnlEur)} (${formatPct(r.pnlPct)})`}
+                      tone={
+                        r.pnlEur > 0
+                          ? "pos"
+                          : r.pnlEur < 0
+                            ? "neg"
+                            : "neutral"
+                      }
+                    />
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
+          {data.length === 0 && (
+            <li className="px-3 py-6 text-center text-blueberry-900/60 text-[12px]">
+              Aucune position ne correspond aux filtres.
+            </li>
+          )}
+        </ul>
+
+        {/* Desktop: table */}
+        <div className="hidden md:block overflow-x-auto -mx-2">
           <table className="w-full text-[12px]">
             <thead>
               {table.getHeaderGroups().map((hg) => (
@@ -328,5 +392,32 @@ export function PositionsTable() {
         </div>
       </Card>
     </>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: "pos" | "neg" | "neutral";
+}) {
+  const toneClass =
+    tone === "pos"
+      ? "text-lime-700"
+      : tone === "neg"
+        ? "text-strawberry-700"
+        : "text-blueberry-900";
+  return (
+    <div className="flex items-baseline gap-1.5 min-w-0">
+      <span className="text-[9.5px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/65 shrink-0">
+        {label}
+      </span>
+      <span className={cn("num font-mono tabular-nums truncate", toneClass)}>
+        {value}
+      </span>
+    </div>
   );
 }

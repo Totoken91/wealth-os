@@ -46,7 +46,72 @@ export function TransactionsTable() {
 
   return (
     <Card header={`Transactions (${sorted.length})`}>
-      <div className="overflow-x-auto -mx-2">
+      {/* Mobile: card list */}
+      <ul className="md:hidden space-y-2">
+        {sorted.map((tx) => {
+          const holding = holdingsById.get(tx.holdingId);
+          const isBuy = tx.type === "buy";
+          return (
+            <li
+              key={tx.id}
+              className="rounded-[10px] border border-blueberry-700/15 bg-blueberry-100/15 px-3 py-2.5"
+            >
+              <div className="flex items-baseline justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-bold text-blueberry-900 text-[13px]">
+                    {holding?.ticker ?? "?"}
+                  </span>
+                  {holding && <Pill flavor={holding.type}>{holding.type}</Pill>}
+                  <span
+                    className={
+                      isBuy
+                        ? "text-[10.5px] font-bold uppercase tracking-wider text-lime-700"
+                        : "text-[10.5px] font-bold uppercase tracking-wider text-strawberry-700"
+                    }
+                  >
+                    {isBuy ? "Achat" : "Vente"}
+                  </span>
+                </div>
+                <span className="num font-mono tabular-nums text-[10.5px] text-blueberry-900/65">
+                  {tx.date}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between gap-2 mt-1.5">
+                <span className="num font-mono tabular-nums text-[11.5px] text-blueberry-900/85">
+                  {formatQuantity(
+                    tx.quantity,
+                    holding?.type === "crypto" ? 8 : 4,
+                  )}{" "}
+                  ×{" "}
+                  {formatQuantity(tx.pricePerUnit, 4)}
+                  {holding?.currency === "USD" ? " $" : " €"}
+                  {tx.fees > 0 && (
+                    <span className="text-blueberry-900/55">
+                      {" "}
+                      · frais {formatEuro(tx.fees)}
+                    </span>
+                  )}
+                </span>
+                <span className="num font-mono tabular-nums text-[13px] font-bold text-blueberry-900 whitespace-nowrap">
+                  {formatEuro(txEur(tx))}
+                </span>
+              </div>
+              <div className="mt-1 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => handleDelete(tx)}
+                  className="text-[10.5px] font-bold uppercase tracking-wider text-strawberry-700 hover:underline"
+                >
+                  Suppr
+                </button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block overflow-x-auto -mx-2">
         <table className="w-full text-[12px]">
           <thead>
             <tr className="border-b border-blueberry-700/30">
