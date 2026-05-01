@@ -992,6 +992,41 @@ export function assessGoal(
   };
 }
 
+/**
+ * Best-effort estimate of the user's monthly savings, with NO user input
+ * required. Fallback chain :
+ *   1. Observed savings over the last 90 days (if ≥14 days of history)
+ *   2. Sum of active DCA rules expressed in €/month
+ *      (weekly × 4.345, biweekly × 2.173, monthly × 1)
+ *   3. settings.monthlyDcaTarget (or weeklyDcaTarget × 4.345)
+ *   4. 0 (no signal at all)
+ */
+export function inferMonthlySavings(state: AppState): number {
+  const observed = calculateObservedMonthlySavings(state);
+  if (observed !== null && observed > 0) return observed;
+
+  const fromRules = state.dcaRules
+    .filter((r) => r.enabled !== false)
+    .reduce((sum, r) => {
+      const factor =
+        r.cadence === "weekly"
+          ? 4.345
+          : r.cadence === "biweekly"
+            ? 2.173
+            : 1;
+      return sum + r.amount * factor;
+    }, 0);
+  if (fromRules > 0) return fromRules;
+
+  if (state.settings.monthlyDcaTarget && state.settings.monthlyDcaTarget > 0) {
+    return state.settings.monthlyDcaTarget;
+  }
+  if (state.settings.weeklyDcaTarget && state.settings.weeklyDcaTarget > 0) {
+    return state.settings.weeklyDcaTarget * 4.345;
+  }
+  return 0;
+}
+
 /* ------------------------------------------------------------------ */
 /* Smart purchase timeline                                              */
 /*                                                                      */
@@ -1088,9 +1123,8 @@ export function simulatePurchaseTimeline(
   const maxLoanMonths = opts.maxLoanMonths ?? 84;
 
   const breakdown = calculateBreakdown(state);
-  const observed = calculateObservedMonthlySavings(state);
   const observedMonthly =
-    opts.monthlySavingsOverride ?? observed ?? 0;
+    opts.monthlySavingsOverride ?? inferMonthlySavings(state);
   const investableWealth =
     breakdown.cash + breakdown.receivables +
     breakdown.etf + breakdown.crypto + breakdown.stock;

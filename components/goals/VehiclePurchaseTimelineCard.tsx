@@ -64,27 +64,25 @@ export function VehiclePurchaseTimelineCard({ goal, state }: Props) {
   const recM = summary.recommendedMonth;
   const recPoint = recM !== null ? summary.points[recM] : null;
   const isNow = recM === 0;
-  const reachable = recM !== null && !summary.outOfReach;
   const outOfReach = summary.outOfReach;
+  const reachable = recM !== null && !outOfReach;
+
+  // === Mode 1 : Achète maintenant ===
+  // === Mode 2 : Attends N mois ===
+  // === Mode 3 : Hors portée ===
 
   return (
     <Card>
+      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="font-sans text-xl font-light tracking-tight text-blueberry-900">
             {goal.name}
           </h3>
           <div className="text-[11px] text-blueberry-900/60 mt-0.5">
-            {entry.brand} {entry.model}
-            {entry.trim ? ` · ${entry.trim}` : ""}
-            {" · prix neuf "}
-            <span className="num">{formatEuro(entry.msrpEur)}</span>
-            {goal.targetDate && (
-              <>
-                {" · deadline "}
-                {goal.targetDate}
-              </>
-            )}
+            Prix neuf <span className="num font-bold">{formatEuro(entry.msrpEur)}</span>
+            {" · épargne mensuelle "}
+            <span className="num font-bold">{formatEuro(summary.monthlySavings)}</span>
           </div>
         </div>
         <button
@@ -96,301 +94,343 @@ export function VehiclePurchaseTimelineCard({ goal, state }: Props) {
         </button>
       </div>
 
-      {/* Headline recommendation */}
-      <div className="mt-4 flex flex-wrap items-baseline gap-3">
-        <span
+      {/* Verdict — gros, clair, une seule phrase */}
+      <div
+        className={cn(
+          "mt-5 rounded-[14px] px-5 py-4 border-2",
+          outOfReach
+            ? "bg-strawberry-100/40 border-strawberry-700/40"
+            : isNow
+              ? "bg-lime-100/40 border-lime-700/40"
+              : "bg-blueberry-100/30 border-blueberry-700/35",
+        )}
+      >
+        <div
           className={cn(
-            "inline-block px-3 py-[5px] rounded-[14px] text-[11px] font-bold border border-black/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_1px_2px_rgba(0,0,0,0.1)] [text-shadow:0_1px_0_rgba(255,255,255,0.4)]",
+            "text-[10.5px] font-extrabold uppercase tracking-[0.1em]",
             outOfReach
-              ? "bg-gradient-to-b from-[#ffb4be] via-[#e84858] to-[#a02030] text-[#5a0a18]"
+              ? "text-strawberry-800"
               : isNow
-                ? "bg-gradient-to-b from-[#c8f0a0] via-[#7ac848] to-[#5aa830] text-[#1a4a08]"
-                : "bg-gradient-to-b from-[#b8e0f8] via-[#6ab4e0] to-[#3a8acc] text-[#0a3a6a]",
+                ? "text-lime-800"
+                : "text-blueberry-800",
           )}
         >
           {outOfReach
-            ? "✗ Hors portée"
+            ? "✗ Pas réaliste pour l'instant"
             : isNow
-              ? "✓ Achète maintenant"
-              : `⏳ Attends ${recM} mois`}
-        </span>
-        {reachable && (
-          <span className="text-[12.5px] font-bold text-blueberry-900">
-            {isNow
-              ? "Le coût trajectoire reste sous ton seuil"
-              : `Date optimale : ${addMonthsLabel(recM!)}`}
-          </span>
-        )}
+              ? "✓ Tu peux te l'offrir maintenant"
+              : `⏳ Mieux d'attendre ${recM} mois`}
+        </div>
+        <div className="mt-1 text-[14px] text-blueberry-900 leading-snug">
+          {renderHeadline(summary, entry.msrpEur)}
+        </div>
       </div>
 
-      <div className="mt-2 text-[12px] text-blueberry-900/75 leading-snug">
-        {summary.recommendationReason}
-      </div>
-
-      {/* Timeline visual */}
-      <Timeline summary={summary} />
-
-      {/* Recommended scenario block */}
-      {recPoint?.scenario && (
-        <div className="mt-4 rounded-[10px] border border-blueberry-700/15 bg-blueberry-100/15 px-4 py-3">
-          <div className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-blueberry-800/80 mb-2">
-            ◆ Mix optimal recommandé
-            {!isNow && ` (à T+${recM} mois)`}
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-[12px]">
-            <Stat
-              label="Apport conseillé"
-              value={formatEuro(recPoint.scenario.downPayment)}
-            />
-            <Stat
-              label="Crédit"
-              value={
-                recPoint.scenario.loanAmount > 0
-                  ? `${formatEuro(recPoint.scenario.loanAmount)} sur ${recPoint.scenario.loanDurationMonths} mois`
-                  : "—"
-              }
-            />
-            <Stat
-              label="Mensualité"
-              value={
-                recPoint.scenario.monthlyPayment > 0
-                  ? `${formatEuro(recPoint.scenario.monthlyPayment)} / mois`
-                  : "—"
-              }
-            />
-            <Stat
-              label="Intérêts cumulés"
-              value={
-                recPoint.scenario.totalInterest > 0
-                  ? formatEuro(recPoint.scenario.totalInterest)
-                  : "—"
-              }
-            />
-          </div>
+      {/* Stats principales selon le mode */}
+      {reachable && recPoint && (
+        <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Stat
+            label={isNow ? "Tu sors de ta poche" : "Apport au moment d'acheter"}
+            value={formatEuro(recPoint.scenario!.downPayment)}
+          />
+          <Stat
+            label="Crédit"
+            value={
+              recPoint.scenario!.loanAmount > 0
+                ? formatEuro(recPoint.scenario!.loanAmount)
+                : "Aucun"
+            }
+            sub={
+              recPoint.scenario!.loanAmount > 0
+                ? `sur ${recPoint.scenario!.loanDurationMonths} mois`
+                : "(cash full)"
+            }
+          />
+          <Stat
+            label="Mensualité"
+            value={
+              recPoint.scenario!.monthlyPayment > 0
+                ? `${formatEuro(recPoint.scenario!.monthlyPayment)}/mois`
+                : "—"
+            }
+            sub={
+              recPoint.scenario!.totalInterest > 0
+                ? `intérêts ${formatEuro(recPoint.scenario!.totalInterest)}`
+                : undefined
+            }
+          />
+          <Stat
+            label={`Coût sur ${summary.horizonYears} ans`}
+            value={`${formatEuro(recPoint.trajectoryCost)}`}
+            sub={`-${(recPoint.trajectoryCostPct * 100).toFixed(1)}% de patrimoine futur`}
+            tone={
+              recPoint.trajectoryCostPct <= summary.tolerancePct
+                ? "neutral"
+                : "neg"
+            }
+          />
         </div>
       )}
 
-      {/* Trajectory comparison */}
-      <div className="mt-4 pt-3 border-t border-blueberry-700/15">
-        <div className="text-[10px] font-extrabold uppercase tracking-[0.08em] text-blueberry-800/80 mb-2">
-          ◆ Coût trajectoire ({summary.horizonYears} ans, rendement{" "}
-          {(state.settings.defaultAnnualReturn * 100).toFixed(1)}%/an)
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-[12px]">
-          <Stat
-            label="Si tu n'achètes pas"
-            value={formatEuro(summary.finalWealthIfSkip)}
-          />
-          {recPoint && (
-            <>
-              <Stat
-                label="Si tu achètes (recommandé)"
-                value={formatEuro(recPoint.finalWealthIfBuy)}
-              />
-              <Stat
-                label="Coût"
-                value={`${formatEuro(recPoint.trajectoryCost)} (${(recPoint.trajectoryCostPct * 100).toFixed(1)}%)`}
-                tone={
-                  recPoint.trajectoryCostPct <= summary.tolerancePct
-                    ? "neutral"
-                    : "neg"
-                }
-              />
-            </>
+      {outOfReach && (
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="rounded-[10px] border border-strawberry-700/15 bg-strawberry-100/20 px-3 py-3">
+            <div className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-strawberry-800/80 mb-1">
+              Ce qu&apos;il manque
+            </div>
+            <div className="text-[12.5px] text-blueberry-900/85 leading-snug">
+              {summary.recommendationReason}
+            </div>
+          </div>
+          {summary.cashFullMonth !== null ? (
+            <div className="rounded-[10px] border border-blueberry-700/15 bg-blueberry-100/15 px-3 py-3">
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/80 mb-1">
+                Au rythme actuel
+              </div>
+              <div className="text-[12.5px] text-blueberry-900/85 leading-snug">
+                Tu pourras te l&apos;offrir <strong>cash sans crédit dans{" "}
+                {monthsToLabel(summary.cashFullMonth)}</strong> ({addMonthsLabel(summary.cashFullMonth)}).
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-[10px] border border-blueberry-700/15 bg-blueberry-100/15 px-3 py-3">
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/80 mb-1">
+                Au rythme actuel
+              </div>
+              <div className="text-[12.5px] text-blueberry-900/85 leading-snug">
+                Tu n&apos;auras pas le prix cash dans les 7 prochaines années
+                — augmente ton épargne, ou vise une voiture moins chère.
+              </div>
+            </div>
           )}
         </div>
-      </div>
+      )}
 
-      {/* Alternative scenarios table */}
-      <details className="mt-3 group">
-        <summary className="text-[10.5px] font-bold uppercase tracking-wider text-blueberry-700 cursor-pointer select-none list-none flex items-center gap-1">
-          <span className="group-open:rotate-90 transition-transform inline-block">
-            ▶
-          </span>
-          Voir d&apos;autres dates d&apos;achat
-        </summary>
-        <div className="mt-2 overflow-x-auto -mx-2">
-          <table className="w-full text-[11px]">
-            <thead>
-              <tr className="border-b border-blueberry-700/30 text-blueberry-800/70 uppercase tracking-[0.04em] text-[9.5px]">
-                <th className="px-2 py-1 text-left">Dans</th>
-                <th className="px-2 py-1 text-right">Patrimoine projeté</th>
-                <th className="px-2 py-1 text-right">Apport</th>
-                <th className="px-2 py-1 text-right">Crédit / durée</th>
-                <th className="px-2 py-1 text-right">Mensualité</th>
-                <th className="px-2 py-1 text-right">Coût 10y</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[0, 6, 12, 24, 36, 48, 60, 84]
-                .filter((m) => m < summary.points.length)
-                .map((m) => {
-                  const p = summary.points[m];
+      {/* Détails dépliables */}
+      {reachable && (
+        <div className="mt-4 pt-3 border-t border-blueberry-700/15 space-y-3">
+          <details className="group">
+            <summary className="text-[11px] font-bold uppercase tracking-wider text-blueberry-700 cursor-pointer select-none list-none flex items-center gap-1.5 hover:text-blueberry-900">
+              <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+              Pourquoi cette date ?
+            </summary>
+            <div className="mt-2 text-[12.5px] text-blueberry-900/85 leading-snug pl-4">
+              {summary.recommendationReason}
+              {!isNow && (
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/65 mb-0.5">
+                      Si tu n&apos;achètes jamais
+                    </div>
+                    <div className="num font-mono tabular-nums text-blueberry-900">
+                      {formatEuro(summary.finalWealthIfSkip)} dans {summary.horizonYears} ans
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/65 mb-0.5">
+                      Si tu suis la reco
+                    </div>
+                    <div className="num font-mono tabular-nums text-blueberry-900">
+                      {formatEuro(recPoint!.finalWealthIfBuy)} dans {summary.horizonYears} ans
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </details>
+
+          {!isNow && summary.points[0] && summary.points[0].feasible && (
+            <details className="group">
+              <summary className="text-[11px] font-bold uppercase tracking-wider text-blueberry-700 cursor-pointer select-none list-none flex items-center gap-1.5 hover:text-blueberry-900">
+                <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+                Et si j&apos;achète maintenant à la place ?
+              </summary>
+              <div className="mt-2 pl-4 text-[12.5px] text-blueberry-900/85 leading-snug">
+                {(() => {
+                  const p0 = summary.points[0];
+                  const extraCost = p0.trajectoryCost - recPoint!.trajectoryCost;
                   return (
-                    <tr
-                      key={m}
-                      className={cn(
-                        m === recM && "bg-lime-100/30",
-                        m % 2 === 0 && m !== recM && "bg-blueberry-100/10",
-                      )}
-                    >
-                      <td className="px-2 py-1.5 num font-mono">
-                        {m === 0 ? "Maintenant" : `T+${m} mois`}
-                      </td>
-                      <td className="px-2 py-1.5 num font-mono text-right">
-                        {formatEuro(p.projectedWealth)}
-                      </td>
-                      <td className="px-2 py-1.5 num font-mono text-right">
-                        {p.feasible
-                          ? formatEuro(p.scenario!.downPayment)
-                          : "—"}
-                      </td>
-                      <td className="px-2 py-1.5 num font-mono text-right">
-                        {p.feasible && p.scenario!.loanAmount > 0
-                          ? `${formatEuro(p.scenario!.loanAmount)} / ${p.scenario!.loanDurationMonths}m`
-                          : p.feasible
-                            ? "0 €"
-                            : "—"}
-                      </td>
-                      <td className="px-2 py-1.5 num font-mono text-right">
-                        {p.feasible && p.scenario!.monthlyPayment > 0
-                          ? formatEuro(p.scenario!.monthlyPayment)
-                          : "—"}
-                      </td>
-                      <td
-                        className={cn(
-                          "px-2 py-1.5 num font-mono text-right font-bold",
-                          p.feasible
-                            ? p.trajectoryCostPct <= summary.tolerancePct
-                              ? "text-lime-700"
-                              : "text-strawberry-700"
-                            : "text-blueberry-900/40",
-                        )}
-                      >
-                        {p.feasible
-                          ? `${(p.trajectoryCostPct * 100).toFixed(1)}%`
-                          : "—"}
-                      </td>
-                    </tr>
+                    <>
+                      Acheter aujourd&apos;hui te coûterait{" "}
+                      <strong>
+                        {formatEuro(p0.trajectoryCost)} (
+                        {(p0.trajectoryCostPct * 100).toFixed(1)}%)
+                      </strong>
+                      {" "}au lieu de{" "}
+                      <strong>
+                        {formatEuro(recPoint!.trajectoryCost)} (
+                        {(recPoint!.trajectoryCostPct * 100).toFixed(1)}%)
+                      </strong>
+                      {" "}— soit{" "}
+                      <strong className="text-strawberry-700">
+                        {formatEuro(extraCost)} de richesse en plus perdue
+                      </strong>
+                      {" "}sur {summary.horizonYears} ans à cause de l&apos;impatience.
+                    </>
                   );
-                })}
-            </tbody>
-          </table>
+                })()}
+              </div>
+            </details>
+          )}
+
+          {summary.cashFullMonth !== null &&
+            summary.cashFullMonth !== recM && (
+              <details className="group">
+                <summary className="text-[11px] font-bold uppercase tracking-wider text-blueberry-700 cursor-pointer select-none list-none flex items-center gap-1.5 hover:text-blueberry-900">
+                  <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+                  Et si j&apos;attends d&apos;avoir tout cash ?
+                </summary>
+                <div className="mt-2 pl-4 text-[12.5px] text-blueberry-900/85 leading-snug">
+                  {(() => {
+                    const cashPoint = summary.points[summary.cashFullMonth!];
+                    return (
+                      <>
+                        Sans crédit du tout, il te faudra attendre{" "}
+                        <strong>{monthsToLabel(summary.cashFullMonth!)}</strong> (
+                        {addMonthsLabel(summary.cashFullMonth!)}). À cette date :
+                        coût {formatEuro(cashPoint.trajectoryCost)} (
+                        {(cashPoint.trajectoryCostPct * 100).toFixed(1)}%).
+                      </>
+                    );
+                  })()}
+                </div>
+              </details>
+            )}
+
+          <details className="group">
+            <summary className="text-[11px] font-bold uppercase tracking-wider text-blueberry-700 cursor-pointer select-none list-none flex items-center gap-1.5 hover:text-blueberry-900">
+              <span className="group-open:rotate-90 transition-transform inline-block">▶</span>
+              Voir d&apos;autres dates
+            </summary>
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full text-[11px]">
+                <thead>
+                  <tr className="border-b border-blueberry-700/30 text-blueberry-800/70 uppercase tracking-[0.04em] text-[9.5px]">
+                    <th className="px-2 py-1 text-left">Achat dans</th>
+                    <th className="px-2 py-1 text-right">Apport</th>
+                    <th className="px-2 py-1 text-right">Crédit</th>
+                    <th className="px-2 py-1 text-right">Mensualité</th>
+                    <th className="px-2 py-1 text-right">Coût {summary.horizonYears} ans</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[0, 6, 12, 24, 36, 48, 60, 84]
+                    .filter((m) => m < summary.points.length)
+                    .map((m) => {
+                      const p = summary.points[m];
+                      return (
+                        <tr
+                          key={m}
+                          className={cn(
+                            m === recM && "bg-lime-100/40 font-bold",
+                            m % 2 === 0 && m !== recM && "bg-blueberry-100/10",
+                          )}
+                        >
+                          <td className="px-2 py-1.5 num font-mono">
+                            {m === 0 ? "Maintenant" : monthsToLabel(m)}
+                          </td>
+                          <td className="px-2 py-1.5 num font-mono text-right">
+                            {p.feasible
+                              ? formatEuro(p.scenario!.downPayment)
+                              : "—"}
+                          </td>
+                          <td className="px-2 py-1.5 num font-mono text-right">
+                            {p.feasible && p.scenario!.loanAmount > 0
+                              ? `${formatEuro(p.scenario!.loanAmount)} / ${p.scenario!.loanDurationMonths}m`
+                              : p.feasible
+                                ? "—"
+                                : "✗"}
+                          </td>
+                          <td className="px-2 py-1.5 num font-mono text-right">
+                            {p.feasible && p.scenario!.monthlyPayment > 0
+                              ? formatEuro(p.scenario!.monthlyPayment)
+                              : "—"}
+                          </td>
+                          <td
+                            className={cn(
+                              "px-2 py-1.5 num font-mono text-right",
+                              p.feasible
+                                ? p.trajectoryCostPct <= summary.tolerancePct
+                                  ? "text-lime-700"
+                                  : "text-strawberry-700"
+                                : "text-blueberry-900/40",
+                            )}
+                          >
+                            {p.feasible
+                              ? `${(p.trajectoryCostPct * 100).toFixed(1)}%`
+                              : "—"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </details>
         </div>
-      </details>
+      )}
+
+      <div className="mt-3 text-[10px] text-blueberry-900/55">
+        Hypothèses : rendement{" "}
+        {(state.settings.defaultAnnualReturn * 100).toFixed(0)}%/an · taux
+        crédit 5%/an · horizon {summary.horizonYears} ans · seuil de tolérance{" "}
+        {(summary.tolerancePct * 100).toFixed(0)}%
+      </div>
     </Card>
   );
 }
 
-function Timeline({ summary }: { summary: PurchaseTimelineSummary }) {
-  const totalMonths = summary.points.length - 1;
-  const markers: { month: number; label: string; tone: "now" | "min" | "rec" | "cash" }[] = [
-    { month: 0, label: "Maintenant", tone: "now" },
-  ];
-  if (
-    summary.minFeasibleMonth !== null &&
-    summary.minFeasibleMonth > 0 &&
-    summary.minFeasibleMonth !== summary.recommendedMonth
-  ) {
-    markers.push({
-      month: summary.minFeasibleMonth,
-      label: `Min faisable T+${summary.minFeasibleMonth}`,
-      tone: "min",
-    });
+function renderHeadline(
+  summary: PurchaseTimelineSummary,
+  msrp: number,
+): React.ReactNode {
+  if (summary.outOfReach) {
+    return (
+      <>
+        Avec une épargne de{" "}
+        <strong>{formatEuro(summary.monthlySavings)}/mois</strong> et tes
+        finances actuelles, l&apos;app n&apos;a pas trouvé de scénario sain pour
+        cette voiture dans les 7 prochaines années.
+      </>
+    );
   }
-  if (summary.recommendedMonth !== null && summary.recommendedMonth > 0) {
-    markers.push({
-      month: summary.recommendedMonth,
-      label: `Recommandé T+${summary.recommendedMonth}`,
-      tone: "rec",
-    });
+  const recM = summary.recommendedMonth!;
+  const recPoint = summary.points[recM];
+  if (recM === 0) {
+    return (
+      <>
+        Acheter aujourd&apos;hui te coûte{" "}
+        <strong>{formatEuro(recPoint.trajectoryCost)}</strong> de patrimoine
+        futur sur {summary.horizonYears} ans —{" "}
+        <strong>{(recPoint.trajectoryCostPct * 100).toFixed(1)}%</strong> de
+        ce que tu aurais sans achat. C&apos;est sous ton seuil de tolérance.
+      </>
+    );
   }
-  if (
-    summary.cashFullMonth !== null &&
-    summary.cashFullMonth !== summary.recommendedMonth
-  ) {
-    markers.push({
-      month: summary.cashFullMonth,
-      label: `Cash full T+${summary.cashFullMonth}`,
-      tone: "cash",
-    });
-  }
-
   return (
-    <div className="mt-4">
-      <div className="relative h-10">
-        {/* Track */}
-        <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-blueberry-700/15" />
-        {/* Filled portion up to recommended */}
-        {summary.recommendedMonth !== null && (
-          <div
-            className="absolute top-1/2 h-1 -translate-y-1/2 rounded-full bg-gradient-to-r from-blueberry-400 to-lime-500"
-            style={{
-              left: 0,
-              width: `${(summary.recommendedMonth / totalMonths) * 100}%`,
-            }}
-          />
-        )}
-        {/* Markers */}
-        {markers.map((m) => {
-          const left = `${(m.month / totalMonths) * 100}%`;
-          const dotColor =
-            m.tone === "now"
-              ? "bg-blueberry-400"
-              : m.tone === "rec"
-                ? "bg-lime-600"
-                : m.tone === "min"
-                  ? "bg-tangerine-500"
-                  : "bg-grape-500";
-          return (
-            <div
-              key={`${m.tone}-${m.month}`}
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 flex flex-col items-center"
-              style={{ left }}
-            >
-              <div
-                className={cn(
-                  "w-3 h-3 rounded-full border border-black/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.6)]",
-                  dotColor,
-                )}
-              />
-            </div>
-          );
-        })}
-      </div>
-      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[10.5px] text-blueberry-900/65">
-        {markers.map((m) => (
-          <span
-            key={`label-${m.tone}-${m.month}`}
-            className="inline-flex items-center gap-1"
-          >
-            <span
-              className={cn(
-                "w-2 h-2 rounded-full",
-                m.tone === "now"
-                  ? "bg-blueberry-400"
-                  : m.tone === "rec"
-                    ? "bg-lime-600"
-                    : m.tone === "min"
-                      ? "bg-tangerine-500"
-                      : "bg-grape-500",
-              )}
-            />
-            {m.label}
-          </span>
-        ))}
-      </div>
-    </div>
+    <>
+      Date conseillée :{" "}
+      <strong>{addMonthsLabel(recM)}</strong>. À cette date, le coût sur{" "}
+      {summary.horizonYears} ans tombera à{" "}
+      <strong>
+        {formatEuro(recPoint.trajectoryCost)} (
+        {(recPoint.trajectoryCostPct * 100).toFixed(1)}%)
+      </strong>{" "}
+      — sous ton seuil. Acheter avant te coûterait plus cher.
+    </>
   );
+  void msrp;
 }
 
 function Stat({
   label,
   value,
+  sub,
   tone,
 }: {
   label: string;
   value: string;
+  sub?: string;
   tone?: "pos" | "neg" | "neutral";
 }) {
   const toneClass =
@@ -404,11 +444,30 @@ function Stat({
       <span className="text-[9.5px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/65 truncate">
         {label}
       </span>
-      <span className={cn("num font-mono tabular-nums truncate", toneClass)}>
+      <span
+        className={cn(
+          "num font-mono tabular-nums font-bold text-[14px]",
+          toneClass,
+        )}
+      >
         {value}
       </span>
+      {sub && (
+        <span className="text-[10px] text-blueberry-900/60 leading-tight">
+          {sub}
+        </span>
+      )}
     </div>
   );
+}
+
+function monthsToLabel(months: number): string {
+  if (months === 0) return "0 mois";
+  if (months < 12) return `${months} mois`;
+  const y = Math.floor(months / 12);
+  const m = months % 12;
+  if (m === 0) return `${y} an${y > 1 ? "s" : ""}`;
+  return `${y} an${y > 1 ? "s" : ""} ${m} mois`;
 }
 
 function addMonthsLabel(months: number): string {

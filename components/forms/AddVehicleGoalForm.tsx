@@ -11,7 +11,7 @@ import {
   type PickerSelection,
 } from "@/components/forms/VehicleCatalogPicker";
 import {
-  calculateObservedMonthlySavings,
+  inferMonthlySavings,
   simulatePurchaseTimeline,
 } from "@/lib/finance";
 import { formatEuro } from "@/lib/formatters";
@@ -65,10 +65,7 @@ export function AddVehicleGoalForm({ onCreated }: Props) {
     undefined,
   );
 
-  const observedMonthly = useMemo(
-    () => calculateObservedMonthlySavings(state),
-    [state],
-  );
+  const inferredMonthly = useMemo(() => inferMonthlySavings(state), [state]);
 
   // Live preview computation
   const preview = useMemo(() => {
@@ -155,18 +152,18 @@ export function AddVehicleGoalForm({ onCreated }: Props) {
             />
           </Field>
           <Field
-            label="Épargne mensuelle (€)"
+            label="Épargne mensuelle (override)"
             hint={
-              observedMonthly !== null
-                ? `Auto = ${formatEuro(observedMonthly)} (observé sur 90j)`
-                : "Pas assez d'historique — saisis ton épargne réelle pour des projections fiables"
+              inferredMonthly > 0
+                ? `Auto = ${formatEuro(inferredMonthly)} / mois (depuis tes DCA et historique)`
+                : "Aucune épargne détectée — configure des règles DCA, ou saisis ici"
             }
           >
             <NumberInput
               value={savingsOverride}
               placeholder={
-                observedMonthly !== null
-                  ? `${Math.round(observedMonthly)}`
+                inferredMonthly > 0
+                  ? `auto ${Math.round(inferredMonthly)}`
                   : "ex : 800"
               }
               onChange={(v) => setSavingsOverride(v ?? undefined)}
