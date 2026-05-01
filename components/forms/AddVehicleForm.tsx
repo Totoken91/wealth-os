@@ -8,6 +8,10 @@ import { Card } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Input";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { Select } from "@/components/ui/Select";
+import {
+  VehicleCatalogPicker,
+  type PickerSelection,
+} from "@/components/forms/VehicleCatalogPicker";
 import { useWealthStore } from "@/lib/store";
 import type { VehicleType } from "@/types";
 
@@ -50,6 +54,23 @@ export function AddVehicleForm({ onCreated }: Props) {
   const update = <K extends keyof FormValues>(key: K, v: FormValues[K]) =>
     setValues((s) => ({ ...s, [key]: v }));
 
+  const applyCatalogPick = (pick: PickerSelection) => {
+    setValues((s) => ({
+      ...s,
+      type: pick.type,
+      name: pick.name,
+      // Default purchaseDate to mid-year of model year (best guess for used)
+      purchaseDate: `${pick.modelYear}-07-01`,
+      purchasePrice: pick.msrpEur,
+      currentValue: pick.estimatedValue,
+      annualDepreciation: pick.annualDepreciation,
+    }));
+    setErrors({});
+    toast.info("Valeurs pré-remplies depuis le catalogue", {
+      description: "Ajuste si besoin avant d'enregistrer",
+    });
+  };
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const result = schema.safeParse(values);
@@ -79,6 +100,9 @@ export function AddVehicleForm({ onCreated }: Props) {
 
   return (
     <Card header="Nouveau véhicule">
+      <div className="mb-3">
+        <VehicleCatalogPicker onPick={applyCatalogPick} />
+      </div>
       <form
         onSubmit={submit}
         className="grid grid-cols-1 sm:grid-cols-3 gap-3"
