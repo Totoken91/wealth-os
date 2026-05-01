@@ -95,12 +95,56 @@ export function estimateCurrentValue(
   entry: CatalogEntry,
   modelYear: number,
   asOf: Date = new Date(),
+  mileageKm?: number,
 ): ValueEstimate {
   const referenceDate = new Date(modelYear, 6, 1); // 1er juillet de l'année modèle
   const ageMs = asOf.getTime() - referenceDate.getTime();
   const ageYears = Math.max(0, ageMs / (365.25 * 24 * 3600 * 1000));
-  const residual = residualFactor(entry.segment, ageYears, entry.iconic);
-  const annual = instantaneousAnnualRate(entry.segment, ageYears, entry.iconic);
+
+  // Mileage normalisation. Reference = 15 000 km/year for cars,
+  // 5 000 km/year for motos.
+  const annualKmReference =
+    entry.category === "motorcycle" ? 5_000 : 15_000;
+  const expectedKm = annualKmReference * ageYears;
+  const deltaKm =
+    mileageKm !== undefined && mileageKm >= 0
+      ? mileageKm - expectedKm
+      : 0;
+
+  // High-mileage iconic cars / motos lose their collector premium.
+  // > 1.5× the expected mileage = "out of collector market".
+  const overMileageRatio =
+    mileageKm !== undefined && expectedKm > 0
+      ? mileageKm / expectedKm
+      : 1;
+  const treatAsIconic = !!entry.iconic && overMileageRatio <= 1.5;
+
+  const baseResidual = residualFactor(entry.segment, ageYears, treatAsIconic);
+
+  // Mileage adjustment :
+  // - 3% deduction per 10 000 km above the reference (4% for sportives/supercar/iconic)
+  // - +2% bonus per 10 000 km below the reference, capped at +20%
+  // The mileage factor itself is bounded to [0.4, 1.20].
+  const sensitivity =
+    entry.iconic ||
+    entry.segment === "sportive" ||
+    entry.segment === "supercar" ||
+    entry.segment === "moto-sportive"
+      ? 0.04
+      : 0.03;
+
+  let mileageFactor = 1;
+  if (mileageKm !== undefined && mileageKm >= 0) {
+    if (deltaKm > 0) {
+      mileageFactor = 1 - sensitivity * (deltaKm / 10_000);
+    } else if (deltaKm < 0) {
+      mileageFactor = 1 + 0.02 * (-deltaKm / 10_000);
+    }
+    mileageFactor = Math.min(1.20, Math.max(0.4, mileageFactor));
+  }
+
+  const residual = baseResidual * mileageFactor;
+  const annual = instantaneousAnnualRate(entry.segment, ageYears, treatAsIconic);
   return {
     estimatedValue: Math.round(entry.msrpEur * residual),
     residualPct: residual,

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Select } from "@/components/ui/Select";
 import {
   availableYears,
@@ -23,6 +24,8 @@ export interface PickerSelection {
   estimatedValue: number;
   annualDepreciation: number;
   modelYear: number;
+  /** Kilometres entered (undefined = "I don't know"). */
+  mileageKm?: number;
 }
 
 interface Props {
@@ -34,6 +37,7 @@ export function VehicleCatalogPicker({ onPick }: Props) {
   const [open, setOpen] = useState(false);
   const [picked, setPicked] = useState<CatalogEntry | null>(null);
   const [year, setYear] = useState<number | null>(null);
+  const [mileageKm, setMileageKm] = useState<number | undefined>(undefined);
   const wrapRef = useRef<HTMLDivElement>(null);
 
   const results = useMemo(() => {
@@ -48,7 +52,19 @@ export function VehicleCatalogPicker({ onPick }: Props) {
 
   const estimate = useMemo(() => {
     if (!picked || !year) return null;
-    return estimateCurrentValue(picked, year);
+    return estimateCurrentValue(picked, year, new Date(), mileageKm);
+  }, [picked, year, mileageKm]);
+
+  // Reference mileage for the chosen year (helps the user know "is my car
+  // above or below average use").
+  const expectedKm = useMemo(() => {
+    if (!picked || !year) return null;
+    const annual = picked.category === "motorcycle" ? 5_000 : 15_000;
+    const ageYears = Math.max(
+      0,
+      (Date.now() - new Date(year, 6, 1).getTime()) / (365.25 * 86400_000),
+    );
+    return Math.round(annual * ageYears);
   }, [picked, year]);
 
   // Click outside to close suggestions
@@ -72,12 +88,14 @@ export function VehicleCatalogPicker({ onPick }: Props) {
     setOpen(false);
     const lastYear = entry.yearEnd ?? new Date().getFullYear();
     setYear(lastYear);
+    setMileageKm(undefined);
   };
 
   const reset = () => {
     setPicked(null);
     setQuery("");
     setYear(null);
+    setMileageKm(undefined);
     setOpen(false);
   };
 
@@ -91,6 +109,7 @@ export function VehicleCatalogPicker({ onPick }: Props) {
       estimatedValue: estimate.estimatedValue,
       annualDepreciation: estimate.annualDepreciationRate,
       modelYear: year,
+      mileageKm,
     });
   };
 
@@ -193,7 +212,7 @@ export function VehicleCatalogPicker({ onPick }: Props) {
       </Field>
 
       {picked && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-start">
           <Field label="Année de mise en circulation">
             <Select
               value={year ?? ""}
@@ -207,8 +226,23 @@ export function VehicleCatalogPicker({ onPick }: Props) {
             </Select>
           </Field>
 
+          <Field
+            label="Kilométrage actuel"
+            hint={
+              expectedKm !== null
+                ? `Moyenne attendue à cet âge : ${expectedKm.toLocaleString("fr-FR")} km`
+                : undefined
+            }
+          >
+            <NumberInput
+              value={mileageKm}
+              placeholder="ex : 120000"
+              onChange={(v) => setMileageKm(v ?? undefined)}
+            />
+          </Field>
+
           {estimate && (
-            <div className="sm:col-span-2 rounded-[8px] bg-white/70 border border-blueberry-700/15 px-3 py-2.5">
+            <div className="sm:col-span-1 rounded-[8px] bg-white/70 border border-blueberry-700/15 px-3 py-2.5">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-[10px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/65">
                   Valeur estimée
@@ -231,6 +265,22 @@ export function VehicleCatalogPicker({ onPick }: Props) {
                   value={`${(estimate.annualDepreciationRate * 100).toFixed(1)}%`}
                 />
               </div>
+              {mileageKm !== undefined && expectedKm !== null && (
+                <div className="mt-1.5 text-[10.5px] text-blueberry-900/65 italic">
+                  {(() => {
+                    const delta = mileageKm - expectedKm;
+                    if (Math.abs(delta) < 5_000) return "Kilométrage dans la moyenne — pas d'ajustement.";
+                    if (delta > 0) {
+                      const ratio = mileageKm / Math.max(1, expectedKm);
+                      const collectorOut = picked.iconic && ratio > 1.5;
+                      return collectorOut
+                        ? `+${delta.toLocaleString("fr-FR")} km vs moyenne — kilométrage trop élevé pour rester sur le marché collector, décote standard appliquée.`
+                        : `+${delta.toLocaleString("fr-FR")} km vs moyenne — décote km appliquée.`;
+                    }
+                    return `${delta.toLocaleString("fr-FR")} km vs moyenne — bonus appliqué.`;
+                  })()}
+                </div>
+              )}
             </div>
           )}
         </div>

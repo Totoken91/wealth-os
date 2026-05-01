@@ -35,6 +35,9 @@ export function VehicleCard({ vehicle }: Props) {
 
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(vehicle.currentValue);
+  const [draftMileage, setDraftMileage] = useState<number | undefined>(
+    vehicle.mileageKm,
+  );
 
   const Icon = ICONS[vehicle.type];
 
@@ -58,6 +61,7 @@ export function VehicleCard({ vehicle }: Props) {
     updateVehicle(vehicle.id, {
       currentValue: draft,
       currentValueUpdatedAt: new Date().toISOString(),
+      mileageKm: draftMileage && draftMileage > 0 ? draftMileage : undefined,
     });
     setEditing(false);
     toast.success("Valeur mise à jour", {
@@ -107,26 +111,46 @@ export function VehicleCard({ vehicle }: Props) {
               Valeur estimée aujourd&apos;hui
             </div>
             {editing ? (
-              <div className="mt-1 flex flex-wrap items-center gap-2">
-                <div className="w-44">
-                  <NumberInput
-                    value={draft || undefined}
-                    onChange={(v) => setDraft(v ?? 0)}
-                    autoFocus
-                  />
+              <div className="mt-1 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/65 w-20">
+                    Valeur €
+                  </span>
+                  <div className="w-44">
+                    <NumberInput
+                      value={draft || undefined}
+                      onChange={(v) => setDraft(v ?? 0)}
+                      autoFocus
+                    />
+                  </div>
                 </div>
-                <Button variant="lime" onClick={saveValue}>
-                  Enregistrer
-                </Button>
-                <Button
-                  variant="neutral"
-                  onClick={() => {
-                    setEditing(false);
-                    setDraft(vehicle.currentValue);
-                  }}
-                >
-                  Annuler
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-extrabold uppercase tracking-[0.06em] text-blueberry-800/65 w-20">
+                    Km
+                  </span>
+                  <div className="w-44">
+                    <NumberInput
+                      value={draftMileage}
+                      placeholder="ex : 120000"
+                      onChange={(v) => setDraftMileage(v ?? undefined)}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button variant="lime" onClick={saveValue}>
+                    Enregistrer
+                  </Button>
+                  <Button
+                    variant="neutral"
+                    onClick={() => {
+                      setEditing(false);
+                      setDraft(vehicle.currentValue);
+                      setDraftMileage(vehicle.mileageKm);
+                    }}
+                  >
+                    Annuler
+                  </Button>
+                </div>
               </div>
             ) : (
               <div className="mt-0.5 flex items-baseline gap-3">
@@ -152,6 +176,14 @@ export function VehicleCard({ vehicle }: Props) {
                 {formatEuro(vehicle.currentValue)}
               </span>{" "}
               · décote auto {(vehicle.annualDepreciation * 100).toFixed(0)}%/an
+              {vehicle.mileageKm !== undefined && vehicle.mileageKm > 0 && (
+                <>
+                  {" · "}
+                  <span className="num">
+                    {vehicle.mileageKm.toLocaleString("fr-FR")} km
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>

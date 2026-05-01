@@ -63,6 +63,8 @@ export interface Vehicle {
   currentValueUpdatedAt: string;
   /** Annual depreciation rate, e.g. 0.15 for 15%/yr */
   annualDepreciation: number;
+  /** Total kilometres on the odometer at currentValueUpdatedAt. */
+  mileageKm?: number;
 }
 
 export interface SnapshotBreakdown {

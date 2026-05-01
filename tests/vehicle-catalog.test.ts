@@ -57,6 +57,61 @@ describe("estimateCurrentValue", () => {
     const est = estimateCurrentValue(e, 2022, new Date("2026-01-01"));
     expect(est.annualDepreciationRate).toBeGreaterThan(0);
   });
+
+  it("applies a mileage penalty above the expected average", () => {
+    const mx5 = getCatalogEntry("mazda-mx-5-nd-1.5")!;
+    const baseline = estimateCurrentValue(mx5, 2018, new Date("2026-05-01"));
+    const highKm = estimateCurrentValue(
+      mx5,
+      2018,
+      new Date("2026-05-01"),
+      120_000, // ~7 years × 15k = 105k expected → 15k over
+    );
+    expect(highKm.estimatedValue).toBeLessThan(baseline.estimatedValue);
+  });
+
+  it("applies a small mileage bonus below average", () => {
+    const mx5 = getCatalogEntry("mazda-mx-5-nd-1.5")!;
+    const baseline = estimateCurrentValue(mx5, 2018, new Date("2026-05-01"));
+    const lowKm = estimateCurrentValue(
+      mx5,
+      2018,
+      new Date("2026-05-01"),
+      40_000, // very low for a 7-year-old car
+    );
+    expect(lowKm.estimatedValue).toBeGreaterThan(baseline.estimatedValue);
+  });
+
+  it("strips the iconic premium when mileage > 1.5× average", () => {
+    const mx5 = getCatalogEntry("mazda-mx-5-nd-1.5")!;
+    expect(mx5.iconic).toBe(true);
+    // Compare a non-iconic car at the same age/mileage delta : the iconic
+    // car at huge mileage should fall close to a normal sportive curve.
+    const stripped = estimateCurrentValue(
+      mx5,
+      2018,
+      new Date("2026-05-01"),
+      200_000, // ~190% of expected (105k) → above 1.5× → strips iconic
+    );
+    const stillIconic = estimateCurrentValue(
+      mx5,
+      2018,
+      new Date("2026-05-01"),
+      105_000, // exactly average → keeps iconic
+    );
+    expect(stripped.estimatedValue).toBeLessThan(stillIconic.estimatedValue * 0.7);
+  });
+
+  it("never returns more than 120% of the MSRP-adjusted residual", () => {
+    const mx5 = getCatalogEntry("mazda-mx-5-nd-1.5")!;
+    const veryLow = estimateCurrentValue(
+      mx5,
+      2018,
+      new Date("2026-05-01"),
+      0,
+    );
+    expect(veryLow.residualPct).toBeLessThanOrEqual(1.20);
+  });
 });
 
 describe("searchCatalog", () => {

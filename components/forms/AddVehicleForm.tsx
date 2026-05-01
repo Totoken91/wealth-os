@@ -22,6 +22,7 @@ const schema = z.object({
   purchasePrice: z.coerce.number().positive("Prix > 0"),
   currentValue: z.coerce.number().positive("Valeur > 0"),
   annualDepreciation: z.coerce.number().min(0).max(1),
+  mileageKm: z.coerce.number().int().min(0).optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -35,6 +36,7 @@ const initial = (defaultDepreciation: number): FormValues => ({
   purchasePrice: 0,
   currentValue: 0,
   annualDepreciation: defaultDepreciation,
+  mileageKm: undefined,
 });
 
 interface Props {
@@ -64,6 +66,7 @@ export function AddVehicleForm({ onCreated }: Props) {
       purchasePrice: pick.msrpEur,
       currentValue: pick.estimatedValue,
       annualDepreciation: pick.annualDepreciation,
+      mileageKm: pick.mileageKm,
     }));
     setErrors({});
     toast.info("Valeurs pré-remplies depuis le catalogue", {
@@ -92,6 +95,10 @@ export function AddVehicleForm({ onCreated }: Props) {
       currentValue: result.data.currentValue,
       currentValueUpdatedAt: new Date().toISOString(),
       annualDepreciation: result.data.annualDepreciation,
+      mileageKm:
+        result.data.mileageKm && result.data.mileageKm > 0
+          ? result.data.mileageKm
+          : undefined,
     });
     toast.success("Véhicule ajouté", { description: result.data.name });
     setValues(initial(defaultDep));
@@ -149,6 +156,16 @@ export function AddVehicleForm({ onCreated }: Props) {
             className={
               errors.currentValue ? "border-strawberry-600" : undefined
             }
+          />
+        </Field>
+        <Field
+          label="Kilométrage (km)"
+          hint={errors.mileageKm ?? "Optionnel — affiche la valeur ajustée"}
+        >
+          <NumberInput
+            value={values.mileageKm}
+            placeholder="ex : 120000"
+            onChange={(v) => update("mileageKm", v as never)}
           />
         </Field>
         <Field
