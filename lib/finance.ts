@@ -704,46 +704,37 @@ export function optimizeFinancing(input: OptimizeInput): FinancingOptimization {
   const { targetAmount, currentWealth, reservedWealth } = input;
   const availableCash = Math.max(0, currentWealth - reservedWealth);
 
-  // Cash-only scenario (loan = 0). May be infeasible if user can't fully fund.
-  const cashOnly = projectScenario(
-    input,
-    Math.min(targetAmount, availableCash),
-    0,
-    0,
-  );
+  // Cash-only scenario is only valid if the user actually has enough to
+  // cover the full purchase. Otherwise it's not a "scenario", it's a
+  // hallucination ("I spent some money but didn't get the car").
+  const cashOnlyFeasible = availableCash >= targetAmount;
+  const cashOnly = cashOnlyFeasible
+    ? projectScenario(input, targetAmount, 0, 0)
+    : projectScenario(input, Math.min(targetAmount, availableCash), 0, 0); // kept for display only when infeasible
 
-  // Max-loan scenario: try the longest accepted duration with the largest loan
-  // whose monthly payment fits the cap.
-  let maxLoan: FinancingProjection = cashOnly;
-  for (let L = targetAmount; L >= 0; L -= LOAN_STEP) {
-    for (const d of DURATIONS.filter((d) => d <= input.maxLoanMonths)) {
-      const monthly = monthlyAnnuity(L, input.creditRate, d);
-      if (monthly > input.maxMonthlyPayment) continue;
-      const dp = targetAmount - L;
-      if (dp > availableCash) continue;
-      maxLoan = projectScenario(input, dp, L, d);
-      break;
-    }
-    if (maxLoan !== cashOnly) break;
+  // Search all (L, d) for the best wealth at horizon. Optimal must come
+  // from a scenario that actually closes the purchase (dp + L = target).
+  let optimal: FinancingProjection | null = null;
+  let maxLoan: FinancingProjection | null = null;
+  let feasibleAny = false;
+
+  // Cash-only first (only if it's a real scenario)
+  if (cashOnlyFeasible) {
+    feasibleAny = true;
+    optimal = cashOnly;
+    maxLoan = cashOnly;
   }
 
-  // Search all (L, d) for the best wealth at horizon.
-  let optimal: FinancingProjection = cashOnly;
-  let feasibleAny = false;
-  for (let L = 0; L <= targetAmount; L += LOAN_STEP) {
+  for (let L = LOAN_STEP; L <= targetAmount; L += LOAN_STEP) {
     const dp = targetAmount - L;
     if (dp < 0 || dp > availableCash) continue;
-    feasibleAny = true;
-    if (L === 0) {
-      // cash-only point already covered
-      if (cashOnly.finalWealth > optimal.finalWealth) optimal = cashOnly;
-      continue;
-    }
     for (const d of DURATIONS.filter((d) => d <= input.maxLoanMonths)) {
       const monthly = monthlyAnnuity(L, input.creditRate, d);
       if (monthly > input.maxMonthlyPayment) continue;
       const proj = projectScenario(input, dp, L, d);
-      if (proj.finalWealth > optimal.finalWealth) optimal = proj;
+      feasibleAny = true;
+      if (!optimal || proj.finalWealth > optimal.finalWealth) optimal = proj;
+      if (!maxLoan || L > maxLoan.loanAmount) maxLoan = proj;
     }
   }
   // Edge step: include exactly targetAmount as max loan if step missed it
@@ -751,20 +742,22 @@ export function optimizeFinancing(input: OptimizeInput): FinancingOptimization {
     const monthly = monthlyAnnuity(targetAmount, input.creditRate, d);
     if (monthly > input.maxMonthlyPayment) continue;
     const proj = projectScenario(input, 0, targetAmount, d);
-    if (proj.finalWealth > optimal.finalWealth) optimal = proj;
+    feasibleAny = true;
+    if (!optimal || proj.finalWealth > optimal.finalWealth) optimal = proj;
+    if (!maxLoan || targetAmount > maxLoan.loanAmount) maxLoan = proj;
   }
 
-  if (!feasibleAny) {
+  if (!feasibleAny || !optimal) {
     return {
       scenarios: { cashOnly, maxLoan: cashOnly, optimal: cashOnly },
       feasible: false,
       reason:
-        "Apport minimum impossible : pas assez de liquidités après réserve d'urgence.",
+        "Aucun scénario d'achat soutenable : le crédit maximum dépasse ta mensualité acceptable, ou l'apport minimum dépasse ton patrimoine investissable.",
     };
   }
 
   return {
-    scenarios: { cashOnly, maxLoan, optimal },
+    scenarios: { cashOnly, maxLoan: maxLoan ?? optimal, optimal },
     feasible: true,
   };
 }
@@ -1053,6 +1046,12 @@ export interface PurchaseTimelinePoint {
   trajectoryCostPct: number;
 }
 
+export type PurchaseVerdict =
+  | "buy-now"        // recommendedMonth=0, cost ≤ tolerance
+  | "wait"           // recommendedMonth>0, cost ≤ tolerance at that date
+  | "compromise"     // best cost in [tolerance, 3×tolerance], no perfect date
+  | "out-of-reach";  // best cost > 3×tolerance, or finalWealth ≤ 0, or nothing feasible
+
 export interface PurchaseTimelineSummary {
   vehiclePrice: number;
   horizonYears: number;
@@ -1071,10 +1070,12 @@ export interface PurchaseTimelineSummary {
   /** First month where you can buy entirely cash (no loan needed). null if never within window. */
   cashFullMonth: number | null;
   /**
-   * Recommended purchase month : first feasible month where trajectoryCostPct ≤ tolerancePct.
-   * null if no acceptable date exists OR if the goal is out of reach.
+   * Recommended purchase month. null only if outOfReach AND no feasible
+   * scenario was found at all.
    */
   recommendedMonth: number | null;
+  /** Clear discriminated verdict for the UI. */
+  verdict: PurchaseVerdict;
   /** True when no realistic scenario exists in the window. */
   outOfReach: boolean;
   /** Why we recommend this month (human-readable). */
@@ -1211,55 +1212,57 @@ export function simulatePurchaseTimeline(
   let recommendedMonth: number | null = null;
   let recommendationReason = "";
   let outOfReach = false;
+  let verdict: PurchaseVerdict = "out-of-reach";
 
   const firstUnderTolerance = eligible.find(
     (p) => p.trajectoryCostPct <= tolerancePct,
   );
 
+  // Compromise threshold : 3× tolerance (e.g. 10% tolerance → 30% max compromise)
+  const compromiseCeiling = tolerancePct * 3;
+
   if (firstUnderTolerance) {
     recommendedMonth = firstUnderTolerance.month;
+    verdict = recommendedMonth === 0 ? "buy-now" : "wait";
     if (recommendedMonth === 0) {
       recommendationReason = `Achète maintenant : la dégradation de ta richesse projetée à ${horizonYears} ans est de ${(firstUnderTolerance.trajectoryCostPct * 100).toFixed(1)}%, sous ton seuil de tolérance (${(tolerancePct * 100).toFixed(0)}%).`;
     } else {
       recommendationReason = `Attends ${recommendedMonth} mois : c'est le premier moment où la dégradation de richesse projetée à ${horizonYears} ans tombe sous ton seuil de ${(tolerancePct * 100).toFixed(0)}% (${(firstUnderTolerance.trajectoryCostPct * 100).toFixed(1)}% à cette date).`;
     }
   } else if (eligible.length > 0) {
-    // No month meets tolerance — pick the best (lowest cost) within deadline.
     const best = eligible.reduce((a, b) =>
       b.trajectoryCostPct < a.trajectoryCostPct ? b : a,
     );
-    // "Out of reach" guard : even the best month is catastrophic. Don't
-    // pretend this is a viable purchase.
     const goingBroke = best.finalWealthIfBuy <= 0;
-    const ridiculousCost = best.trajectoryCostPct > 0.5;
+    const ridiculousCost = best.trajectoryCostPct > compromiseCeiling;
     if (goingBroke || ridiculousCost) {
       outOfReach = true;
+      verdict = "out-of-reach";
       recommendedMonth = null;
       const reasons: string[] = [];
       if (observedMonthly <= 0) {
-        reasons.push("ton épargne mensuelle est nulle ou non mesurée — saisis-la dans le formulaire");
+        reasons.push("ton épargne mensuelle est nulle ou non mesurée");
       }
       if (investableWealth < opts.vehiclePrice * 0.1) {
         reasons.push("tu as trop peu de patrimoine investissable pour servir d'apport sans crédit ruineux");
       }
       if (goingBroke) {
-        reasons.push("le scénario le moins mauvais te ferait finir avec un patrimoine négatif (crédit non remboursable au rythme actuel)");
+        reasons.push("le scénario le moins mauvais te ferait finir avec un patrimoine négatif");
+      } else if (ridiculousCost) {
+        reasons.push(`le meilleur scénario coûte ${(best.trajectoryCostPct * 100).toFixed(0)}% de ton patrimoine futur (au-dessus de ${(compromiseCeiling * 100).toFixed(0)}% considéré comme acceptable)`);
       }
-      if (reasons.length === 0) {
-        reasons.push(`coût trajectoire trop élevé (${(best.trajectoryCostPct * 100).toFixed(0)}%) sur toutes les dates testées`);
-      }
-      recommendationReason = `✗ Hors portée dans les ${maxMonths} prochains mois : ${reasons.join(" ; ")}.`;
+      recommendationReason = `Hors portée dans les ${maxMonths} prochains mois : ${reasons.join(" ; ")}.`;
     } else {
+      // Compromise zone : tolerance < cost ≤ 3×tolerance.
+      verdict = "compromise";
       recommendedMonth = best.month;
-      if (opts.monthsUntilDeadline !== undefined) {
-        recommendationReason = `Aucune date avant ta deadline (${opts.monthsUntilDeadline} mois) ne respecte ton seuil. Meilleur compromis : ${best.month} mois (${(best.trajectoryCostPct * 100).toFixed(1)}% de dégradation).`;
-      } else {
-        recommendationReason = `Aucune date dans ${maxMonths} mois ne respecte ton seuil de ${(tolerancePct * 100).toFixed(0)}%. Meilleur compromis : ${best.month} mois (${(best.trajectoryCostPct * 100).toFixed(1)}%).`;
-      }
+      const dateLabel = best.month === 0 ? "maintenant" : `dans ${best.month} mois`;
+      recommendationReason = `Aucune date ne respecte ton seuil de ${(tolerancePct * 100).toFixed(0)}%. Meilleur compromis : ${dateLabel} (${(best.trajectoryCostPct * 100).toFixed(1)}% de dégradation, au-dessus de ton seuil mais raisonnable).`;
     }
   } else {
     outOfReach = true;
-    recommendationReason = `Pas de scénario faisable dans les ${maxMonths} prochains mois — augmente ton épargne, baisse la cible, ou agrandis l'horizon.`;
+    verdict = "out-of-reach";
+    recommendationReason = `Pas de scénario d'achat soutenable dans les ${maxMonths} prochains mois — augmente ton épargne, baisse la cible, ou agrandis l'horizon.`;
   }
 
   return {
@@ -1273,6 +1276,7 @@ export function simulatePurchaseTimeline(
     minFeasibleMonth,
     cashFullMonth,
     recommendedMonth,
+    verdict,
     outOfReach,
     recommendationReason,
   };

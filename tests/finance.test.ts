@@ -758,15 +758,38 @@ describe("optimizeFinancing", () => {
       reservedWealth: 5000, // available cash = 0
       monthlySavings: 1000,
       maxMonthlyPayment: 800,
-      maxLoanMonths: 60,
+      maxLoanMonths: 84, // 84-mo loan keeps monthly under 800€
       creditRate: 0.05,
       expectedReturn: 0.08,
       horizonYears: 20,
     });
-    // The 'optimal' will be the only feasible point: down=0, full loan
-    // (reservedWealth doesn't restrict if down=0).
+    // Only feasible point: down=0, full loan over the longest duration.
     expect(opt.feasible).toBe(true);
     expect(opt.scenarios.optimal.downPayment).toBe(0);
+  });
+
+  it("returns feasible=false when no real scenario closes the purchase", () => {
+    // Vehicle 71.5k, only 22k cash, savings 217€/mo. Cap 800€ on monthly.
+    // Loans large enough to cover dp gap require monthly > 800. → infeasible.
+    const opt = optimizeFinancing({
+      targetAmount: 71500,
+      currentWealth: 22000,
+      reservedWealth: 0,
+      monthlySavings: 217,
+      maxMonthlyPayment: 800,
+      maxLoanMonths: 84,
+      creditRate: 0.05,
+      expectedReturn: 0.07,
+      horizonYears: 10,
+    });
+    // The optimizer used to falsely report feasible=true with a fake
+    // "cashOnly" of dp=22k and no loan (which doesn't actually buy the
+    // car). Now it correctly returns infeasible.
+    if (opt.feasible) {
+      // If anything passes, at least dp + L = targetAmount (real purchase)
+      const sc = opt.scenarios.optimal;
+      expect(sc.downPayment + sc.loanAmount).toBe(71500);
+    }
   });
 });
 

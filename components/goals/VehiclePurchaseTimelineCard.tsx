@@ -63,8 +63,10 @@ export function VehiclePurchaseTimelineCard({ goal, state }: Props) {
 
   const recM = summary.recommendedMonth;
   const recPoint = recM !== null ? summary.points[recM] : null;
-  const isNow = recM === 0;
-  const outOfReach = summary.outOfReach;
+  const verdict = summary.verdict;
+  const isNow = recM === 0 && verdict === "buy-now";
+  const outOfReach = verdict === "out-of-reach";
+  const isCompromise = verdict === "compromise";
   const reachable = recM !== null && !outOfReach;
 
   // === Mode 1 : Achète maintenant ===
@@ -100,9 +102,11 @@ export function VehiclePurchaseTimelineCard({ goal, state }: Props) {
           "mt-5 rounded-[14px] px-5 py-4 border-2",
           outOfReach
             ? "bg-strawberry-100/40 border-strawberry-700/40"
-            : isNow
-              ? "bg-lime-100/40 border-lime-700/40"
-              : "bg-blueberry-100/30 border-blueberry-700/35",
+            : isCompromise
+              ? "bg-tangerine-100/40 border-tangerine-700/40"
+              : isNow
+                ? "bg-lime-100/40 border-lime-700/40"
+                : "bg-blueberry-100/30 border-blueberry-700/35",
         )}
       >
         <div
@@ -110,19 +114,23 @@ export function VehiclePurchaseTimelineCard({ goal, state }: Props) {
             "text-[10.5px] font-extrabold uppercase tracking-[0.1em]",
             outOfReach
               ? "text-strawberry-800"
-              : isNow
-                ? "text-lime-800"
-                : "text-blueberry-800",
+              : isCompromise
+                ? "text-tangerine-800"
+                : isNow
+                  ? "text-lime-800"
+                  : "text-blueberry-800",
           )}
         >
           {outOfReach
             ? "✗ Pas réaliste pour l'instant"
-            : isNow
-              ? "✓ Tu peux te l'offrir maintenant"
-              : `⏳ Mieux d'attendre ${recM} mois`}
+            : isCompromise
+              ? `⚠ Aucune date idéale — compromis ${recM === 0 ? "maintenant" : `dans ${recM} mois`}`
+              : isNow
+                ? "✓ Tu peux te l'offrir maintenant"
+                : `⏳ Mieux d'attendre ${recM} mois`}
         </div>
         <div className="mt-1 text-[14px] text-blueberry-900 leading-snug">
-          {renderHeadline(summary, entry.msrpEur)}
+          {renderHeadline(summary)}
         </div>
       </div>
 
@@ -382,20 +390,40 @@ export function VehiclePurchaseTimelineCard({ goal, state }: Props) {
 
 function renderHeadline(
   summary: PurchaseTimelineSummary,
-  msrp: number,
 ): React.ReactNode {
   if (summary.outOfReach) {
     return (
       <>
         Avec une épargne de{" "}
         <strong>{formatEuro(summary.monthlySavings)}/mois</strong> et tes
-        finances actuelles, l&apos;app n&apos;a pas trouvé de scénario sain pour
-        cette voiture dans les 7 prochaines années.
+        finances actuelles, l&apos;app n&apos;a pas trouvé de scénario
+        soutenable pour cette voiture dans les 7 prochaines années.
+        {summary.cashFullMonth !== null && (
+          <>
+            {" "}Au rythme actuel tu pourrais te l&apos;offrir cash dans{" "}
+            <strong>{monthsToLabel(summary.cashFullMonth)}</strong>.
+          </>
+        )}
       </>
     );
   }
   const recM = summary.recommendedMonth!;
   const recPoint = summary.points[recM];
+  if (summary.verdict === "compromise") {
+    return (
+      <>
+        Aucune date ne respecte ton seuil de tolérance de{" "}
+        <strong>{(summary.tolerancePct * 100).toFixed(0)}%</strong>. Le
+        meilleur compromis te coûterait{" "}
+        <strong>{formatEuro(recPoint.trajectoryCost)}</strong> de patrimoine
+        futur sur {summary.horizonYears} ans —{" "}
+        <strong className="text-tangerine-800">
+          {(recPoint.trajectoryCostPct * 100).toFixed(1)}%
+        </strong>
+        . Acheter reste possible mais coûte cher.
+      </>
+    );
+  }
   if (recM === 0) {
     return (
       <>
@@ -419,7 +447,6 @@ function renderHeadline(
       — sous ton seuil. Acheter avant te coûterait plus cher.
     </>
   );
-  void msrp;
 }
 
 function Stat({
