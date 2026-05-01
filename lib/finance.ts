@@ -1022,6 +1022,8 @@ export interface PurchaseTimelineSummary {
   vehiclePrice: number;
   horizonYears: number;
   tolerancePct: number;
+  /** Monthly savings used in the simulation (override > observed > 0). */
+  monthlySavings: number;
   /** Months of leeway from "today" until the user's deadline, if any. undefined = no deadline. */
   monthsUntilDeadline?: number;
   /** Final wealth in horizonYears if user never buys this vehicle. */
@@ -1035,10 +1037,11 @@ export interface PurchaseTimelineSummary {
   cashFullMonth: number | null;
   /**
    * Recommended purchase month : first feasible month where trajectoryCostPct ≤ tolerancePct.
-   * If a deadline is set, capped at monthsUntilDeadline.
-   * If never reached, falls back to the best feasible month within window.
+   * null if no acceptable date exists OR if the goal is out of reach.
    */
   recommendedMonth: number | null;
+  /** True when no realistic scenario exists in the window. */
+  outOfReach: boolean;
   /** Why we recommend this month (human-readable). */
   recommendationReason: string;
 }
@@ -1064,6 +1067,12 @@ interface SimulateTimelineOptions {
   maxMonthlyPayment?: number;
   /** Maximum loan duration in months, default 84. */
   maxLoanMonths?: number;
+  /**
+   * User-declared monthly savings override. Used when observed is null
+   * (not enough history) or the user knows better. Falls back to observed
+   * or 0.
+   */
+  monthlySavingsOverride?: number;
 }
 
 export function simulatePurchaseTimeline(
@@ -1079,7 +1088,9 @@ export function simulatePurchaseTimeline(
   const maxLoanMonths = opts.maxLoanMonths ?? 84;
 
   const breakdown = calculateBreakdown(state);
-  const observedMonthly = calculateObservedMonthlySavings(state) ?? 0;
+  const observed = calculateObservedMonthlySavings(state);
+  const observedMonthly =
+    opts.monthlySavingsOverride ?? observed ?? 0;
   const investableWealth =
     breakdown.cash + breakdown.receivables +
     breakdown.etf + breakdown.crypto + breakdown.stock;
@@ -1165,6 +1176,7 @@ export function simulatePurchaseTimeline(
 
   let recommendedMonth: number | null = null;
   let recommendationReason = "";
+  let outOfReach = false;
 
   const firstUnderTolerance = eligible.find(
     (p) => p.trajectoryCostPct <= tolerancePct,
@@ -1182,13 +1194,37 @@ export function simulatePurchaseTimeline(
     const best = eligible.reduce((a, b) =>
       b.trajectoryCostPct < a.trajectoryCostPct ? b : a,
     );
-    recommendedMonth = best.month;
-    if (opts.monthsUntilDeadline !== undefined) {
-      recommendationReason = `Aucune date avant ta deadline (${opts.monthsUntilDeadline} mois) ne respecte ton seuil. Meilleur compromis : ${best.month} mois (${(best.trajectoryCostPct * 100).toFixed(1)}% de dégradation).`;
+    // "Out of reach" guard : even the best month is catastrophic. Don't
+    // pretend this is a viable purchase.
+    const goingBroke = best.finalWealthIfBuy <= 0;
+    const ridiculousCost = best.trajectoryCostPct > 0.5;
+    if (goingBroke || ridiculousCost) {
+      outOfReach = true;
+      recommendedMonth = null;
+      const reasons: string[] = [];
+      if (observedMonthly <= 0) {
+        reasons.push("ton épargne mensuelle est nulle ou non mesurée — saisis-la dans le formulaire");
+      }
+      if (investableWealth < opts.vehiclePrice * 0.1) {
+        reasons.push("tu as trop peu de patrimoine investissable pour servir d'apport sans crédit ruineux");
+      }
+      if (goingBroke) {
+        reasons.push("le scénario le moins mauvais te ferait finir avec un patrimoine négatif (crédit non remboursable au rythme actuel)");
+      }
+      if (reasons.length === 0) {
+        reasons.push(`coût trajectoire trop élevé (${(best.trajectoryCostPct * 100).toFixed(0)}%) sur toutes les dates testées`);
+      }
+      recommendationReason = `✗ Hors portée dans les ${maxMonths} prochains mois : ${reasons.join(" ; ")}.`;
     } else {
-      recommendationReason = `Aucune date dans ${maxMonths} mois ne respecte ton seuil de ${(tolerancePct * 100).toFixed(0)}%. Meilleur compromis : ${best.month} mois (${(best.trajectoryCostPct * 100).toFixed(1)}%).`;
+      recommendedMonth = best.month;
+      if (opts.monthsUntilDeadline !== undefined) {
+        recommendationReason = `Aucune date avant ta deadline (${opts.monthsUntilDeadline} mois) ne respecte ton seuil. Meilleur compromis : ${best.month} mois (${(best.trajectoryCostPct * 100).toFixed(1)}% de dégradation).`;
+      } else {
+        recommendationReason = `Aucune date dans ${maxMonths} mois ne respecte ton seuil de ${(tolerancePct * 100).toFixed(0)}%. Meilleur compromis : ${best.month} mois (${(best.trajectoryCostPct * 100).toFixed(1)}%).`;
+      }
     }
   } else {
+    outOfReach = true;
     recommendationReason = `Pas de scénario faisable dans les ${maxMonths} prochains mois — augmente ton épargne, baisse la cible, ou agrandis l'horizon.`;
   }
 
@@ -1196,12 +1232,14 @@ export function simulatePurchaseTimeline(
     vehiclePrice: opts.vehiclePrice,
     horizonYears,
     tolerancePct,
+    monthlySavings: observedMonthly,
     monthsUntilDeadline: opts.monthsUntilDeadline,
     finalWealthIfSkip: skipWealth,
     points,
     minFeasibleMonth,
     cashFullMonth,
     recommendedMonth,
+    outOfReach,
     recommendationReason,
   };
 }

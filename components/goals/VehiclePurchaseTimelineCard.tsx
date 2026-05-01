@@ -39,6 +39,7 @@ export function VehiclePurchaseTimelineCard({ goal, state }: Props) {
       vehiclePrice: goal.targetAmount,
       monthsUntilDeadline,
       tolerancePct: goal.tolerancePct ?? 0.10,
+      monthlySavingsOverride: goal.monthlyOverride,
     });
   }, [entry, goal, state]);
 
@@ -63,7 +64,8 @@ export function VehiclePurchaseTimelineCard({ goal, state }: Props) {
   const recM = summary.recommendedMonth;
   const recPoint = recM !== null ? summary.points[recM] : null;
   const isNow = recM === 0;
-  const reachable = recM !== null;
+  const reachable = recM !== null && !summary.outOfReach;
+  const outOfReach = summary.outOfReach;
 
   return (
     <Card>
@@ -99,14 +101,14 @@ export function VehiclePurchaseTimelineCard({ goal, state }: Props) {
         <span
           className={cn(
             "inline-block px-3 py-[5px] rounded-[14px] text-[11px] font-bold border border-black/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.8),0_1px_2px_rgba(0,0,0,0.1)] [text-shadow:0_1px_0_rgba(255,255,255,0.4)]",
-            !reachable
+            outOfReach
               ? "bg-gradient-to-b from-[#ffb4be] via-[#e84858] to-[#a02030] text-[#5a0a18]"
               : isNow
                 ? "bg-gradient-to-b from-[#c8f0a0] via-[#7ac848] to-[#5aa830] text-[#1a4a08]"
                 : "bg-gradient-to-b from-[#b8e0f8] via-[#6ab4e0] to-[#3a8acc] text-[#0a3a6a]",
           )}
         >
-          {!reachable
+          {outOfReach
             ? "✗ Hors portée"
             : isNow
               ? "✓ Achète maintenant"
