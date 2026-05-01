@@ -992,6 +992,220 @@ export function assessGoal(
   };
 }
 
+/* ------------------------------------------------------------------ */
+/* Smart purchase timeline                                              */
+/*                                                                      */
+/* Given a vehicle (price + optional deadline), simulate every possible */
+/* purchase month from 0 to maxMonths and compute the projected wealth  */
+/* at a long-term horizon. Returns the "recommended" month = first      */
+/* month where buying degrades long-term wealth by ≤ tolerancePct vs    */
+/* "never buy".                                                         */
+/* ------------------------------------------------------------------ */
+
+export interface PurchaseTimelinePoint {
+  month: number;                    // m=0 means "today", m=12 means "in 12 months"
+  projectedWealth: number;          // your investable wealth at month m if you don't buy yet
+  feasible: boolean;
+  /** Optimal financing scenario at this month. Defined only when feasible. */
+  scenario?: FinancingProjection;
+  /** Final wealth at horizon (years from now) if you buy at month m using the optimal mix. */
+  finalWealthIfBuy: number;
+  /** Final wealth at horizon (years from now) if you NEVER buy — same regardless of m, included for convenience. */
+  finalWealthIfSkip: number;
+  /** Patrimoine sacrifié à horizon : finalWealthIfSkip − finalWealthIfBuy (positive = cost). */
+  trajectoryCost: number;
+  /** trajectoryCost / finalWealthIfSkip, clipped to [0, 1+]. */
+  trajectoryCostPct: number;
+}
+
+export interface PurchaseTimelineSummary {
+  vehiclePrice: number;
+  horizonYears: number;
+  tolerancePct: number;
+  /** Months of leeway from "today" until the user's deadline, if any. undefined = no deadline. */
+  monthsUntilDeadline?: number;
+  /** Final wealth in horizonYears if user never buys this vehicle. */
+  finalWealthIfSkip: number;
+
+  points: PurchaseTimelinePoint[];
+
+  /** First month where the optimizer is feasible (any mix works). null if never. */
+  minFeasibleMonth: number | null;
+  /** First month where you can buy entirely cash (no loan needed). null if never within window. */
+  cashFullMonth: number | null;
+  /**
+   * Recommended purchase month : first feasible month where trajectoryCostPct ≤ tolerancePct.
+   * If a deadline is set, capped at monthsUntilDeadline.
+   * If never reached, falls back to the best feasible month within window.
+   */
+  recommendedMonth: number | null;
+  /** Why we recommend this month (human-readable). */
+  recommendationReason: string;
+}
+
+interface SimulateTimelineOptions {
+  /** Vehicle (or anything) price in € — fixed across the simulation. */
+  vehiclePrice: number;
+  /** Months from today until the user's deadline (inclusive). undefined = no constraint. */
+  monthsUntilDeadline?: number;
+  /** 0..1, default 0.10. */
+  tolerancePct?: number;
+  /** Long-term horizon for wealth projection, default 10y. */
+  horizonYears?: number;
+  /** Search ceiling (months), default 84 = 7 years. */
+  maxMonths?: number;
+  /** Annual return assumption, default settings.defaultAnnualReturn. */
+  expectedReturn?: number;
+  /** Annual credit rate, default 0.05. */
+  creditRate?: number;
+  /** Months of observed savings to keep as emergency fund, default 3. */
+  emergencyFundMonths?: number;
+  /** Hard cap on monthly loan payment, default = max(observed × 0.5, 800). */
+  maxMonthlyPayment?: number;
+  /** Maximum loan duration in months, default 84. */
+  maxLoanMonths?: number;
+}
+
+export function simulatePurchaseTimeline(
+  state: AppState,
+  opts: SimulateTimelineOptions,
+): PurchaseTimelineSummary {
+  const tolerancePct = opts.tolerancePct ?? 0.10;
+  const horizonYears = opts.horizonYears ?? 10;
+  const maxMonths = opts.maxMonths ?? 84;
+  const annualReturn = opts.expectedReturn ?? state.settings.defaultAnnualReturn;
+  const creditRate = opts.creditRate ?? 0.05;
+  const emergencyFundMonths = opts.emergencyFundMonths ?? 3;
+  const maxLoanMonths = opts.maxLoanMonths ?? 84;
+
+  const breakdown = calculateBreakdown(state);
+  const observedMonthly = calculateObservedMonthlySavings(state) ?? 0;
+  const investableWealth =
+    breakdown.cash + breakdown.receivables +
+    breakdown.etf + breakdown.crypto + breakdown.stock;
+
+  const reservedFloor = Math.max(0, observedMonthly * emergencyFundMonths);
+  const maxMonthlyPayment =
+    opts.maxMonthlyPayment ?? Math.max(observedMonthly * 0.5, 800);
+
+  const r = annualReturn / 12;
+  const horizonMonths = Math.max(1, Math.round(horizonYears * 12));
+
+  // "Never buy" baseline — wealth in horizonMonths if user keeps saving without buying.
+  let skipWealth = investableWealth;
+  for (let m = 1; m <= horizonMonths; m += 1) {
+    skipWealth = skipWealth * (1 + r) + observedMonthly;
+  }
+
+  // Project investableWealth from now to month m for each m.
+  const projectedAt: number[] = [investableWealth];
+  for (let m = 1; m <= maxMonths; m += 1) {
+    projectedAt.push(projectedAt[m - 1] * (1 + r) + observedMonthly);
+  }
+
+  const points: PurchaseTimelinePoint[] = [];
+  let minFeasibleMonth: number | null = null;
+  let cashFullMonth: number | null = null;
+
+  for (let m = 0; m <= maxMonths; m += 1) {
+    const projWealth = projectedAt[m];
+    // Run optimizer for a purchase at month m.
+    const remainingHorizonYears = Math.max(0.001, horizonYears - m / 12);
+    const optim = optimizeFinancing({
+      targetAmount: opts.vehiclePrice,
+      currentWealth: projWealth,
+      reservedWealth: reservedFloor,
+      monthlySavings: observedMonthly,
+      maxMonthlyPayment,
+      maxLoanMonths,
+      creditRate,
+      expectedReturn: annualReturn,
+      horizonYears: remainingHorizonYears,
+    });
+
+    if (optim.feasible && minFeasibleMonth === null) minFeasibleMonth = m;
+    if (
+      cashFullMonth === null &&
+      projWealth - reservedFloor >= opts.vehiclePrice
+    ) {
+      cashFullMonth = m;
+    }
+
+    let finalWealthIfBuy = 0;
+    if (optim.feasible) {
+      // Wealth at horizon = wealth from purchase month to horizon, projected forward.
+      // optim.scenarios.optimal.finalWealth is wealth at "remainingHorizonYears" from purchase.
+      // That IS the wealth at horizonYears from today.
+      finalWealthIfBuy = optim.scenarios.optimal.finalWealth;
+    }
+    const trajectoryCost = optim.feasible
+      ? skipWealth - finalWealthIfBuy
+      : skipWealth; // when infeasible, "cost" = full skip (you can't buy)
+    const trajectoryCostPct =
+      skipWealth > 0 ? trajectoryCost / skipWealth : 0;
+
+    points.push({
+      month: m,
+      projectedWealth: projWealth,
+      feasible: optim.feasible,
+      scenario: optim.feasible ? optim.scenarios.optimal : undefined,
+      finalWealthIfBuy,
+      finalWealthIfSkip: skipWealth,
+      trajectoryCost,
+      trajectoryCostPct,
+    });
+  }
+
+  // Find recommended month : first feasible m where cost% <= tolerance.
+  // If a deadline is set, only consider m ≤ deadline.
+  const deadlineCap = opts.monthsUntilDeadline ?? maxMonths;
+  const eligible = points.filter(
+    (p) => p.feasible && p.month <= deadlineCap,
+  );
+
+  let recommendedMonth: number | null = null;
+  let recommendationReason = "";
+
+  const firstUnderTolerance = eligible.find(
+    (p) => p.trajectoryCostPct <= tolerancePct,
+  );
+
+  if (firstUnderTolerance) {
+    recommendedMonth = firstUnderTolerance.month;
+    if (recommendedMonth === 0) {
+      recommendationReason = `Achète maintenant : la dégradation de ta richesse projetée à ${horizonYears} ans est de ${(firstUnderTolerance.trajectoryCostPct * 100).toFixed(1)}%, sous ton seuil de tolérance (${(tolerancePct * 100).toFixed(0)}%).`;
+    } else {
+      recommendationReason = `Attends ${recommendedMonth} mois : c'est le premier moment où la dégradation de richesse projetée à ${horizonYears} ans tombe sous ton seuil de ${(tolerancePct * 100).toFixed(0)}% (${(firstUnderTolerance.trajectoryCostPct * 100).toFixed(1)}% à cette date).`;
+    }
+  } else if (eligible.length > 0) {
+    // No month meets tolerance — pick the best (lowest cost) within deadline.
+    const best = eligible.reduce((a, b) =>
+      b.trajectoryCostPct < a.trajectoryCostPct ? b : a,
+    );
+    recommendedMonth = best.month;
+    if (opts.monthsUntilDeadline !== undefined) {
+      recommendationReason = `Aucune date avant ta deadline (${opts.monthsUntilDeadline} mois) ne respecte ton seuil. Meilleur compromis : ${best.month} mois (${(best.trajectoryCostPct * 100).toFixed(1)}% de dégradation).`;
+    } else {
+      recommendationReason = `Aucune date dans ${maxMonths} mois ne respecte ton seuil de ${(tolerancePct * 100).toFixed(0)}%. Meilleur compromis : ${best.month} mois (${(best.trajectoryCostPct * 100).toFixed(1)}%).`;
+    }
+  } else {
+    recommendationReason = `Pas de scénario faisable dans les ${maxMonths} prochains mois — augmente ton épargne, baisse la cible, ou agrandis l'horizon.`;
+  }
+
+  return {
+    vehiclePrice: opts.vehiclePrice,
+    horizonYears,
+    tolerancePct,
+    monthsUntilDeadline: opts.monthsUntilDeadline,
+    finalWealthIfSkip: skipWealth,
+    points,
+    minFeasibleMonth,
+    cashFullMonth,
+    recommendedMonth,
+    recommendationReason,
+  };
+}
+
 function formatPlainEuro(v: number): string {
   return `${Math.round(v).toLocaleString("fr-FR")} €`;
 }

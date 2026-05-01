@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { LoanOptimizerPanel } from "@/components/goals/LoanOptimizerPanel";
+import { VehiclePurchaseTimelineCard } from "@/components/goals/VehiclePurchaseTimelineCard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { NumberInput } from "@/components/ui/NumberInput";
@@ -11,7 +12,7 @@ import type { GoalAssessment, GoalSmartStatus } from "@/lib/finance";
 import { formatEuro } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { useWealthStore } from "@/lib/store";
-import type { Goal } from "@/types";
+import type { AppState, Goal } from "@/types";
 
 interface Props {
   goal: Goal;
@@ -49,9 +50,46 @@ export function GoalCard({ goal, assessment }: Props) {
   const updateGoal = useWealthStore((s) => s.updateGoal);
   const deleteGoal = useWealthStore((s) => s.deleteGoal);
 
+  const holdings = useWealthStore((s) => s.holdings);
+  const transactions = useWealthStore((s) => s.transactions);
+  const vehicles = useWealthStore((s) => s.vehicles);
+  const accounts = useWealthStore((s) => s.accounts);
+  const snapshots = useWealthStore((s) => s.snapshots);
+  const goals = useWealthStore((s) => s.goals);
+  const dcaRules = useWealthStore((s) => s.dcaRules);
+  const settings = useWealthStore((s) => s.settings);
+
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(goal.monthlyOverride ?? 0);
   const [optimizerOpen, setOptimizerOpen] = useState(false);
+
+  const state: AppState = useMemo(
+    () => ({
+      holdings,
+      transactions,
+      vehicles,
+      accounts: accounts ?? [],
+      snapshots,
+      goals,
+      dcaRules,
+      settings,
+    }),
+    [
+      holdings,
+      transactions,
+      vehicles,
+      accounts,
+      snapshots,
+      goals,
+      dcaRules,
+      settings,
+    ],
+  );
+
+  // Smart vehicle goal — render the dedicated timeline card.
+  if (goal.vehicleCatalogId) {
+    return <VehiclePurchaseTimelineCard goal={goal} state={state} />;
+  }
 
   const { plan, isPurchase } = assessment;
 

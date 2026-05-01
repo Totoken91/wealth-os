@@ -13,6 +13,8 @@ import {
 import { formatEuro } from "@/lib/formatters";
 
 export interface PickerSelection {
+  /** Stable catalog id, e.g. "toyota-gr-supra-3.0" */
+  catalogId: string;
   /** Maps to Vehicle.type */
   type: "car" | "motorcycle";
   /** Suggested name "Brand Model Trim (Year)" */
@@ -82,6 +84,7 @@ export function VehicleCatalogPicker({ onPick }: Props) {
   const apply = () => {
     if (!picked || !year || !estimate) return;
     onPick({
+      catalogId: picked.id,
       type: picked.category,
       name: `${picked.brand} ${picked.model}${picked.trim ? ` ${picked.trim}` : ""} (${year})`,
       msrpEur: picked.msrpEur,

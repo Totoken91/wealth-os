@@ -98,6 +98,20 @@ export interface Goal {
   monthlyOverride?: number;
   notes?: string;
   createdAt: string;
+  /**
+   * If set, this goal is a "smart vehicle purchase" : the targetAmount is the
+   * vehicle price, the timeline is computed automatically (when to buy + how
+   * much to borrow + which mix maximises long-term wealth), and the user does
+   * not enter borrowAmount manually.
+   */
+  vehicleCatalogId?: string;
+  /** Model year of the vehicle (lets us redo the price estimate at any time). */
+  vehicleModelYear?: number;
+  /**
+   * Acceptable degradation of projected 10y wealth vs "never buy" baseline,
+   * 0..1 (default 0.10 = up to 10% future-wealth lost is OK).
+   */
+  tolerancePct?: number;
 }
 
 export interface Settings {

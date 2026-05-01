@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { AddGoalForm } from "@/components/forms/AddGoalForm";
+import { AddVehicleGoalForm } from "@/components/forms/AddVehicleGoalForm";
 import { GoalCard } from "@/components/goals/GoalCard";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -25,7 +26,7 @@ export default function GoalsPage() {
   const dcaRules = useWealthStore((s) => s.dcaRules);
   const settings = useWealthStore((s) => s.settings);
 
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState<null | "manual" | "vehicle">(null);
 
   const state: AppState = useMemo(
     () => ({
@@ -94,15 +95,21 @@ export default function GoalsPage() {
       ) : (
         <>
           {!showForm && (
-            <div className="mb-4 flex justify-end">
-              <Button variant="tangerine" onClick={() => setShowForm(true)}>
+            <div className="mb-4 flex justify-end gap-2 flex-wrap">
+              <Button variant="lime" onClick={() => setShowForm("vehicle")}>
+                + Achat véhicule auto
+              </Button>
+              <Button variant="tangerine" onClick={() => setShowForm("manual")}>
                 + Nouvel objectif
               </Button>
             </div>
           )}
 
-          {showForm && (
-            <AddGoalForm onCreated={() => setShowForm(false)} />
+          {showForm === "manual" && (
+            <AddGoalForm onCreated={() => setShowForm(null)} />
+          )}
+          {showForm === "vehicle" && (
+            <AddVehicleGoalForm onCreated={() => setShowForm(null)} />
           )}
 
           {sorted.length === 0 && !showForm ? (

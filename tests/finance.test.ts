@@ -19,6 +19,7 @@ import {
   planForGoal,
   projectFutureValue,
   shouldCreateSnapshot,
+  simulatePurchaseTimeline,
 } from "@/lib/finance";
 import type {
   AppState,
@@ -883,5 +884,120 @@ describe("calculateMonthlyDcaActual", () => {
         new Date("2026-04-15T00:00:00Z"),
       ),
     ).toBe(0);
+  });
+});
+
+/* -------------------------------------------------------------------- */
+/* simulatePurchaseTimeline                                              */
+/* -------------------------------------------------------------------- */
+
+function stateWithSnapshot(
+  totalNet: number,
+  monthsAgo: number,
+  baselineNet: number,
+): AppState {
+  const now = new Date();
+  const past = new Date(now);
+  past.setMonth(past.getMonth() - monthsAgo);
+  return {
+    ...emptyState(),
+    accounts: [
+      {
+        id: "acc1",
+        name: "PEA",
+        type: "savings",
+        institution: "Test",
+        balance: totalNet,
+        balanceUpdatedAt: now.toISOString(),
+        createdAt: now.toISOString(),
+      },
+    ],
+    snapshots: [
+      {
+        id: "old",
+        date: past.toISOString(),
+        totalNet: baselineNet,
+        capitalInvested: baselineNet,
+        breakdown: {
+          etf: 0,
+          crypto: 0,
+          stock: 0,
+          cash: baselineNet,
+          vehicles: 0,
+          debts: 0,
+          receivables: 0,
+        },
+      },
+    ],
+  };
+}
+
+describe("simulatePurchaseTimeline", () => {
+  it("recommends buying immediately when the price is small relative to wealth", () => {
+    // 200k cash + 1500/mo saving, want a tiny 5k vehicle. Almost zero impact.
+    const state = stateWithSnapshot(200_000, 3, 195_500);
+    const result = simulatePurchaseTimeline(state, {
+      vehiclePrice: 5_000,
+      tolerancePct: 0.10,
+    });
+    expect(result.minFeasibleMonth).toBe(0);
+    expect(result.recommendedMonth).toBe(0);
+    expect(result.points[0].feasible).toBe(true);
+    expect(result.points[0].trajectoryCostPct).toBeLessThan(0.05);
+  });
+
+  it("delays the recommendation when the price impacts long-term wealth meaningfully", () => {
+    // 200k cash, want a 50k vehicle. Buying now eats ~13% of projected 10y wealth.
+    // With 10% tolerance, the algo should defer the purchase.
+    const state = stateWithSnapshot(200_000, 3, 195_500);
+    const result = simulatePurchaseTimeline(state, {
+      vehiclePrice: 50_000,
+      tolerancePct: 0.10,
+      horizonYears: 10,
+    });
+    expect(result.minFeasibleMonth).toBe(0);
+    expect(result.recommendedMonth).not.toBeNull();
+    expect(result.recommendedMonth!).toBeGreaterThan(0);
+    // First point exceeds tolerance
+    expect(result.points[0].trajectoryCostPct).toBeGreaterThan(0.10);
+    // Recommended point is under tolerance
+    expect(
+      result.points[result.recommendedMonth!].trajectoryCostPct,
+    ).toBeLessThanOrEqual(0.10);
+  });
+
+  it("respects a deadline cap", () => {
+    const state = stateWithSnapshot(20_000, 3, 15_500);
+    const result = simulatePurchaseTimeline(state, {
+      vehiclePrice: 60_000,
+      tolerancePct: 0.05,
+      monthsUntilDeadline: 24,
+    });
+    if (result.recommendedMonth !== null) {
+      expect(result.recommendedMonth).toBeLessThanOrEqual(24);
+    }
+  });
+
+  it("flags cashFullMonth when wealth eventually covers price + reserve", () => {
+    const state = stateWithSnapshot(30_000, 3, 25_500);
+    const result = simulatePurchaseTimeline(state, {
+      vehiclePrice: 40_000,
+      maxMonths: 84,
+    });
+    expect(result.cashFullMonth).not.toBeNull();
+    if (result.cashFullMonth !== null) {
+      expect(result.points[result.cashFullMonth].projectedWealth).toBeGreaterThanOrEqual(40_000);
+    }
+  });
+
+  it("returns the right number of points", () => {
+    const state = stateWithSnapshot(50_000, 3, 45_500);
+    const result = simulatePurchaseTimeline(state, {
+      vehiclePrice: 30_000,
+      maxMonths: 60,
+    });
+    expect(result.points).toHaveLength(61);
+    expect(result.points[0].month).toBe(0);
+    expect(result.points[60].month).toBe(60);
   });
 });
