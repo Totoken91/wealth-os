@@ -83,18 +83,17 @@ describe("estimateCurrentValue", () => {
   });
 
   it("strips the iconic premium when mileage > 1.5× average", () => {
-    const mx5 = getCatalogEntry("mazda-mx-5-nd-1.5")!;
-    expect(mx5.iconic).toBe(true);
-    // Compare a non-iconic car at the same age/mileage delta : the iconic
-    // car at huge mileage should fall close to a normal sportive curve.
+    // MX-5 ND 2.0 keeps the iconic flag (the desirable trim).
+    const mx5_20 = getCatalogEntry("mazda-mx-5-nd-2.0")!;
+    expect(mx5_20.iconic).toBe(true);
     const stripped = estimateCurrentValue(
-      mx5,
+      mx5_20,
       2018,
       new Date("2026-05-01"),
       200_000, // ~190% of expected (105k) → above 1.5× → strips iconic
     );
     const stillIconic = estimateCurrentValue(
-      mx5,
+      mx5_20,
       2018,
       new Date("2026-05-01"),
       105_000, // exactly average → keeps iconic
@@ -102,7 +101,7 @@ describe("estimateCurrentValue", () => {
     expect(stripped.estimatedValue).toBeLessThan(stillIconic.estimatedValue * 0.7);
   });
 
-  it("never returns more than 120% of the MSRP-adjusted residual", () => {
+  it("never returns more than 110% of the MSRP-adjusted residual", () => {
     const mx5 = getCatalogEntry("mazda-mx-5-nd-1.5")!;
     const veryLow = estimateCurrentValue(
       mx5,
@@ -110,7 +109,7 @@ describe("estimateCurrentValue", () => {
       new Date("2026-05-01"),
       0,
     );
-    expect(veryLow.residualPct).toBeLessThanOrEqual(1.20);
+    expect(veryLow.residualPct).toBeLessThanOrEqual(1.10);
   });
 });
 

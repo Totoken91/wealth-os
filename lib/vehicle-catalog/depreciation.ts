@@ -138,9 +138,11 @@ export function estimateCurrentValue(
     if (deltaKm > 0) {
       mileageFactor = 1 - sensitivity * (deltaKm / 10_000);
     } else if (deltaKm < 0) {
-      mileageFactor = 1 + 0.02 * (-deltaKm / 10_000);
+      // Smaller bonus than penalty: a low km nudges the price up modestly,
+      // but doesn't transform a normal car into a unicorn. Cap at +10%.
+      mileageFactor = 1 + 0.01 * (-deltaKm / 10_000);
     }
-    mileageFactor = Math.min(1.20, Math.max(0.4, mileageFactor));
+    mileageFactor = Math.min(1.10, Math.max(0.4, mileageFactor));
   }
 
   const residual = baseResidual * mileageFactor;
